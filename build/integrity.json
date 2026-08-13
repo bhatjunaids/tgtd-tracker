@@ -1,0 +1,68 @@
+{
+ "builtOn": "13 Aug 2026",
+ "districts": 75,
+ "blocks": 1016,
+ "schools": 131383,
+ "blocksWithSchools": 1005,
+ "emptyBlocks": [
+  {
+   "district": "Auraiya",
+   "block": "Nagar Achhalda",
+   "code": 608
+  },
+  {
+   "district": "Bhadohi",
+   "block": "Nagar Palika Bhadohi",
+   "code": 1706
+  },
+  {
+   "district": "Ghaziabad",
+   "block": "City Zone Ghaziabad",
+   "code": 3002
+  },
+  {
+   "district": "Kanpur Dehat",
+   "block": "Jijhak",
+   "code": 4205
+  },
+  {
+   "district": "Lucknow",
+   "block": "Nagar-2",
+   "code": 4909
+  },
+  {
+   "district": "Lucknow",
+   "block": "Nagar-4",
+   "code": 4911
+  },
+  {
+   "district": "Pilibhit",
+   "block": "Nagar Bisalpur",
+   "code": 5908
+  },
+  {
+   "district": "Sambhal",
+   "block": "Gunnor",
+   "code": 6509
+  },
+  {
+   "district": "Sitapur",
+   "block": "Nagar Palika Mahmoodabad",
+   "code": 7117
+  },
+  {
+   "district": "Sonbhadra",
+   "block": "Karma",
+   "code": 7206
+  },
+  {
+   "district": "Sonbhadra",
+   "block": "Kon",
+   "code": 7207
+  }
+ ],
+ "orphanBlocks": [],
+ "dupUdise": 0,
+ "minSchoolsInBlock": 1,
+ "maxSchoolsInBlock": 395
+}

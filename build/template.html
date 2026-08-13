@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kitab Vitran — TG &amp; TD Distribution Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F4F4F1; --surface:#FFFFFF;
+    --ink:#1A2233; --ink-soft:#5B6472; --ink-faint:#8A919E;
+    --spine:#0E7A6E; --spine-deep:#0A5C53;
+    --line:#E5E3DC; --line-soft:#EFEEE9;
+    /* status roles — reserved, always shipped with a label */
+    --green:#2F855A; --amber:#C98A1A; --red:#C13B3B; --dark-red:#8E2020;
+    /* categorical title identity — validated: CVD 16.2, normal-vision 20.1, contrast >= 3.22 */
+    --t0:#12A18E; --t1:#2563A8; --t2:#9C4A12;
+    --shadow:0 1px 2px rgba(26,34,51,.05), 0 8px 24px rgba(26,34,51,.05);
+    --serif:"Fraunces",Georgia,"Times New Roman",serif;
+    --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1320px;margin:0 auto;padding:0 24px 80px}
+
+  /* ---------- Masthead ---------- */
+  .masthead{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:24px;padding:34px 0 22px;border-bottom:1px solid var(--line)}
+  .brand-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--spine-deep);font-weight:600;margin:0 0 6px}
+  .brand-title{font-family:var(--serif);font-weight:600;font-size:38px;line-height:1;letter-spacing:-.01em;margin:0}
+  .brand-sub{margin:8px 0 0;color:var(--ink-soft);font-size:13.5px;max-width:52ch}
+  .chips{display:flex;gap:10px;flex-wrap:wrap}
+  .chip{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;min-width:104px;box-shadow:var(--shadow)}
+  .chip .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint)}
+  .chip .v{font-family:var(--mono);font-size:21px;font-weight:600;margin-top:2px;line-height:1}
+  .chip .v.spine{color:var(--spine-deep)}
+
+  /* ---------- Status bar (the sheet connection itself stays out of sight) ---------- */
+  .uploader{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);margin:20px 0 0}
+  .statusbar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 16px;flex-wrap:wrap}
+  .st-status{font-size:12.5px;color:var(--ink-soft);display:flex;align-items:center;gap:7px;flex-wrap:wrap;min-width:0}
+  .sep{color:var(--ink-faint)}
+  .livedot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(47,133,90,.16);display:inline-block;flex:0 0 auto}
+  .errdot{width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 0 3px rgba(193,59,59,.16);display:inline-block;flex:0 0 auto}
+  .btn{font-family:var(--sans);font-size:12.5px;font-weight:500;padding:9px 13px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .btn:hover{border-color:#CFCCC2;background:#FBFBF8}
+  .btn svg{width:14px;height:14px}
+  .btn.primary{background:var(--spine);border-color:var(--spine);color:#fff}
+  .btn.primary:hover{background:var(--spine-deep);border-color:var(--spine-deep)}
+  .btn.ghost{background:transparent;border-color:transparent;color:var(--ink-soft)}
+  .btn.ghost:hover{background:#F1F0EB;border-color:transparent}
+
+  /* ---------- Module nav ---------- */
+  .modnav{display:flex;gap:6px;margin:22px 0 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .modbtn{font-family:var(--serif);font-size:19px;font-weight:600;padding:10px 16px 12px;border:0;background:none;color:var(--ink-faint);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;display:flex;align-items:baseline;gap:7px}
+  .modbtn:hover{color:var(--ink-soft)}
+  .modbtn.active{color:var(--ink);border-bottom-color:var(--spine)}
+  .modbtn .mn{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--ink-faint)}
+  .module{display:none}
+  .module.active{display:block}
+
+  /* ---------- Tabs ---------- */
+  .tabs{display:flex;gap:4px;margin:20px 0 0;flex-wrap:wrap}
+  .tab{font-family:var(--sans);font-size:13px;font-weight:500;padding:8px 14px;border-radius:8px 8px 0 0;border:1px solid transparent;border-bottom:0;background:none;color:var(--ink-soft);cursor:pointer;display:flex;align-items:center;gap:7px}
+  .tab:hover{background:#EDECE6}
+  .tab.active{background:var(--surface);border-color:var(--line);color:var(--ink);font-weight:600}
+  .badge{font-family:var(--mono);font-size:10.5px;background:var(--red);color:#fff;border-radius:20px;padding:1px 6px;font-weight:600}
+  .badge.hidden{display:none}
+  .panel{display:none;background:var(--surface);border:1px solid var(--line);border-radius:0 12px 12px 12px;box-shadow:var(--shadow);padding:18px 20px 22px;margin-top:-1px}
+  .panel.active{display:block}
+
+  /* ---------- Controls ---------- */
+  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+  .search{position:relative;display:flex;align-items:center}
+  .search svg{position:absolute;left:10px;width:15px;height:15px;color:var(--ink-faint);pointer-events:none}
+  .search input{font-family:var(--sans);font-size:13px;padding:8px 11px 8px 32px;border:1px solid var(--line);border-radius:8px;background:#FCFCFA;color:var(--ink);min-width:220px}
+  .search input:focus{outline:2px solid #CBE5DF;border-color:var(--spine)}
+  select.sel{font-family:var(--sans);font-size:13px;padding:8px 11px;border:1px solid var(--line);border-radius:8px;background:#FCFCFA;color:var(--ink);max-width:250px}
+  select.sel:focus{outline:2px solid #CBE5DF;border-color:var(--spine)}
+  .fchips{display:flex;gap:5px;flex-wrap:wrap}
+  .fchip{font-family:var(--sans);font-size:12px;font-weight:500;padding:7px 11px;border-radius:20px;border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+  .fchip:hover{border-color:#CFCCC2}
+  .fchip.active{background:#EFF5F3;border-color:var(--spine);color:var(--spine-deep);font-weight:600}
+  .fchip .d{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .spacer{flex:1}
+  .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-right:-4px}
+
+  /* ---------- Tables ---------- */
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;max-height:70vh;overflow-y:auto}
+  table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
+  thead th{position:sticky;top:0;z-index:2;background:#FAFAF7;font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;text-align:left;padding:9px 11px;border-bottom:1px solid var(--line);white-space:nowrap}
+  thead tr.grp th{top:0;font-size:10.5px;text-align:center;border-bottom:1px solid var(--line-soft);color:var(--ink-soft)}
+  thead tr.sub th{top:29px}
+  th.num,td.num{text-align:right;font-family:var(--mono)}
+  th.ctr,td.ctr{text-align:center}
+  tbody td{padding:8px 11px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+  tbody tr:hover td{background:#FBFBF8}
+  tbody tr:last-child td{border-bottom:0}
+  td.name{font-weight:500;white-space:nowrap}
+  td.dim{color:var(--ink-faint);white-space:nowrap}
+  .mono{font-family:var(--mono)}
+  .sep-l{border-left:1px solid var(--line-soft)}
+  tfoot td{position:sticky;bottom:0;background:#F7F7F3;font-weight:600;padding:9px 11px;border-top:1px solid var(--line)}
+
+  /* meter inside a table cell */
+  .meter{display:flex;align-items:center;gap:8px;min-width:120px}
+  .meter .bar{flex:1;height:6px;border-radius:3px;background:#EDECE6;overflow:hidden;min-width:44px}
+  .meter .fill{display:block;height:100%;border-radius:3px}
+  .meter .pct{font-family:var(--mono);font-size:12px;font-weight:600;min-width:42px;text-align:right}
+
+  /* YES / NO pill */
+  .pill{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.06em;padding:3px 8px;border-radius:5px;display:inline-flex;align-items:center;gap:4px}
+  .pill.yes{background:#E7F3EC;color:#1F6B45}
+  .pill.no{background:#F3F1EE;color:#8A8378}
+  .pill svg{width:11px;height:11px}
+
+  /* ---------- Analysis ---------- */
+  .hero{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:20px}
+  .tile{border:1px solid var(--line);border-radius:12px;padding:16px 18px;background:#FCFCFA}
+  .tile .tk{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);display:flex;align-items:center;gap:7px}
+  .tile .tk .sw{width:9px;height:9px;border-radius:2px;display:inline-block}
+  .tile .tv{font-family:var(--mono);font-size:34px;font-weight:600;line-height:1.05;margin:8px 0 2px}
+  .tile .ts{font-size:12.5px;color:var(--ink-soft)}
+  .tile .bar{height:8px;border-radius:4px;background:#EDECE6;overflow:hidden;margin-top:11px}
+  .tile .fill{display:block;height:100%;border-radius:4px}
+
+  .sect{margin-top:26px}
+  .sect h3{font-family:var(--serif);font-size:19px;font-weight:600;margin:0 0 4px}
+  .sect p.note{margin:0 0 14px;color:var(--ink-soft);font-size:12.5px;max-width:70ch}
+
+  .dist{display:flex;gap:2px;border-radius:8px;overflow:hidden;height:34px;border:1px solid var(--line)}
+  .dist .seg{display:grid;place-items:center;font-family:var(--mono);font-size:11.5px;font-weight:600;color:#fff;min-width:2px}
+  .distleg{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}
+  .distleg .li{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-soft)}
+  .distleg .li .d{width:10px;height:10px;border-radius:3px}
+  .distleg .li b{font-family:var(--mono);color:var(--ink)}
+
+  .rank{display:grid;grid-template-columns:1fr 1fr;gap:26px}
+  @media(max-width:840px){.rank{grid-template-columns:1fr}}
+  .rank h4{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;margin:0 0 10px}
+  .rrow{display:grid;grid-template-columns:132px 1fr 52px;align-items:center;gap:10px;margin-bottom:7px}
+  .rrow .rn{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rrow .rb{height:14px;background:#EFEEE9;border-radius:0 4px 4px 0;overflow:hidden}
+  .rrow .rb i{display:block;height:100%;border-radius:0 4px 4px 0;background:var(--t0)}
+  .rrow .rv{font-family:var(--mono);font-size:12px;font-weight:600;text-align:right}
+
+  /* ---------- State report ---------- */
+  .modnote{color:var(--ink-soft);font-size:12.5px;max-width:96ch;margin:18px 0 0;line-height:1.55}
+  .modnote b{color:var(--ink)}
+  table.streport thead th.g-dist{background:#F4F1EA;color:var(--spine-deep)}
+  table.streport thead th.g-blk{background:#EEF3F1;color:var(--spine-deep)}
+  table.streport thead th.g-sch{background:#F3F0F5;color:#4A3F73}
+  table.streport thead tr.band th{top:0;text-align:center;font-size:10.5px;padding:7px 10px;border-bottom:1px solid var(--line-soft)}
+  table.streport thead tr.head th{top:30px;text-align:center}
+  table.streport thead th.col-name,table.streport td.col-name{text-align:left;position:sticky;left:0;background:#FAFAF7;z-index:3}
+  table.streport thead th.col-name{z-index:4}
+  table.streport td.col-name{background:var(--surface);font-weight:500;white-space:nowrap}
+  table.streport tbody tr:hover td{background:#FBFBF8}
+  table.streport tbody tr:hover td.col-name{background:#FBFBF8}
+  table.streport td{text-align:center}
+  table.streport tr.sr-tot td{border-top:1px solid var(--line);border-bottom:0;font-weight:700;background:#F7F7F3}
+  table.streport tr.sr-tot td.col-name{background:#F7F7F3}
+  .pcell{font-family:var(--mono);font-size:12px;font-weight:600;border-radius:5px;padding:3px 7px;display:inline-block;min-width:52px}
+  .pcell.g{background:#E7F3EC;color:#1F6B45}
+  .pcell.a{background:#FCF3DF;color:#7A5510}
+  .pcell.r{background:#FBE7E7;color:#8E2020}
+  .pcell.na{background:#F3F1EE;color:var(--ink-faint)}
+  .cnt{font-family:var(--mono);font-size:12px;font-weight:600;padding:3px 7px;border-radius:5px}
+  .cnt.ok{background:#E7F3EC;color:#1F6B45}
+  .cnt.bad{background:#FBE7E7;color:#8E2020}
+
+  /* ---------- misc ---------- */
+  .lazy{padding:38px;text-align:center;color:var(--ink-faint);font-size:13px;display:flex;align-items:center;justify-content:center;gap:10px}
+  .sp{width:15px;height:15px;border:2px solid var(--line);border-top-color:var(--spine);border-radius:50%;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .summary{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+  .scard{border:1px solid var(--line);border-radius:10px;padding:11px 14px;background:#FCFCFA;min-width:132px}
+  .scard .k{font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);display:flex;align-items:center;gap:6px}
+  .scard .k .sw{width:9px;height:9px;border-radius:2px}
+  .scard .v{font-family:var(--mono);font-size:22px;font-weight:600;margin-top:3px;line-height:1}
+  .scard .s{font-size:11.5px;color:var(--ink-soft);margin-top:2px}
+  .empty{padding:34px;text-align:center;color:var(--ink-faint);font-size:13px}
+  .warnbox{background:#FDF6E7;border:1px solid #EAD9AE;border-radius:10px;padding:12px 15px;font-size:12.5px;color:#6D5518;margin-bottom:16px}
+  .warnbox b{color:#4A3A0F}
+  .match-report{padding:0 20px 14px;font-size:12.5px;color:var(--ink-soft)}
+  .match-report:empty{display:none}
+  .foot{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);color:var(--ink-faint);font-size:12px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .foot a{color:var(--spine-deep)}
+  .cap{font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin-top:8px}
+
+  /* ---------- Narrow screens ---------- */
+  @media(max-width:760px){
+    .wrap{padding:0 14px 60px}
+    .brand-title{font-size:28px}
+    .masthead{padding:24px 0 18px;gap:16px}
+    .chip{min-width:88px;padding:8px 11px}
+    .chip .v{font-size:18px}
+    .statusbar{padding:11px 14px;gap:10px}
+    .modbtn{font-size:16px;padding:9px 11px 11px}
+    .panel{padding:14px 12px 18px}
+    .controls{gap:8px}
+    .search input,select.sel{min-width:0;width:100%}
+    .search{flex:1 1 100%}
+    .match-report{padding:0 14px 12px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div>
+      <p class="brand-eyebrow">Kitab Vitran · SPMU NBC Uttar Pradesh</p>
+      <h1 class="brand-title">TG &amp; TD Distribution Tracker</h1>
+      <p class="brand-sub">Teacher Guide (Math &amp; Hindi) and Teacher Diary — delivery status from district targets down to individual schools.</p>
+    </div>
+    <div class="chips">
+      <div class="chip"><div class="k">Districts</div><div class="v">75</div></div>
+      <div class="chip"><div class="k">Blocks</div><div class="v">1,016</div></div>
+      <div class="chip"><div class="k">Schools</div><div class="v">1,31,383</div></div>
+      <div class="chip"><div class="k">Books targeted</div><div class="v spine" id="chipTarget">—</div></div>
+    </div>
+  </header>
+
+  <div class="uploader">
+    <div class="statusbar">
+      <div class="st-status" id="srcStatus"></div>
+      <button class="btn ghost" id="refreshBtn" type="button" title="Refresh now" aria-label="Refresh now">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        Refresh
+      </button>
+    </div>
+    <div class="match-report" id="matchReport"></div>
+  </div>
+
+  <nav class="modnav" role="tablist" aria-label="View level">
+    <button class="modbtn active" data-mod="district" role="tab">District <span class="mn">75</span></button>
+    <button class="modbtn" data-mod="block" role="tab">Block <span class="mn">1,016</span></button>
+    <button class="modbtn" data-mod="school" role="tab">School <span class="mn">1,31,383</span></button>
+    <button class="modbtn" data-mod="reports" role="tab">Reports</button>
+  </nav>
+
+  <!-- ============ DISTRICT ============ -->
+  <div id="mod-district" class="module active">
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="recon" role="tab">Reconciliation</button>
+      <button class="tab" data-tab="analysis" role="tab">Analysis</button>
+      <button class="tab" data-tab="gaps" role="tab">Not reached <span class="badge hidden" id="gapBadge">0</span></button>
+    </nav>
+
+    <section class="panel active" id="panel-recon" role="tabpanel">
+      <div class="controls">
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="dSearch" placeholder="Search district…">
+        </div>
+        <div class="fchips" id="dFilter">
+          <button class="fchip active" data-f="all">All</button>
+          <button class="fchip" data-f="high"><span class="d" style="background:var(--green)"></span>&ge;80%</button>
+          <button class="fchip" data-f="mid"><span class="d" style="background:var(--amber)"></span>50–80%</button>
+          <button class="fchip" data-f="low"><span class="d" style="background:var(--red)"></span>&lt;50%</button>
+          <button class="fchip" data-f="none"><span class="d" style="background:var(--dark-red)"></span>Not reached</button>
+        </div>
+        <div class="spacer"></div>
+        <button class="btn" id="dExport" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export CSV
+        </button>
+      </div>
+      <div class="tablewrap" id="dTable"></div>
+    </section>
+
+    <section class="panel" id="panel-analysis" role="tabpanel">
+      <div class="hero" id="dHero"></div>
+      <div class="sect">
+        <h3>How districts are spread</h3>
+        <p class="note">Districts grouped by overall receipt against target, counting all three titles together.</p>
+        <div class="dist" id="dDist"></div>
+        <div class="distleg" id="dDistLeg"></div>
+      </div>
+      <div class="sect rank">
+        <div>
+          <h4>Strongest districts — overall % received</h4>
+          <div id="dTop"></div>
+        </div>
+        <div>
+          <h4>Weakest districts — overall % received</h4>
+          <div id="dBot"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-gaps" role="tabpanel">
+      <p class="note" style="margin-top:0;color:var(--ink-soft);font-size:12.5px">District–title combinations where nothing has been received yet. These are the hard stops, not the slow movers.</p>
+      <div class="tablewrap" id="dGaps"></div>
+    </section>
+  </div>
+
+  <!-- ============ BLOCK ============ -->
+  <div id="mod-block" class="module">
+    <section class="panel active" style="border-radius:12px;margin-top:20px">
+      <div class="controls">
+        <span class="lbl">District</span>
+        <select class="sel" id="bDist"><option value="">All districts</option></select>
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="bSearch" placeholder="Search block or code…">
+        </div>
+        <div class="fchips" id="bFilter">
+          <button class="fchip active" data-f="all">All</button>
+          <button class="fchip" data-f="full">All 3 titles</button>
+          <button class="fchip" data-f="part">Partial</button>
+          <button class="fchip" data-f="none">Nothing yet</button>
+        </div>
+        <div class="spacer"></div>
+        <button class="btn" id="bExport" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export CSV
+        </button>
+      </div>
+      <div class="summary" id="bSummary"></div>
+      <div class="tablewrap" id="bTable"><div class="lazy"><div class="sp"></div>Preparing block data…</div></div>
+    </section>
+  </div>
+
+  <!-- ============ SCHOOL ============ -->
+  <div id="mod-school" class="module">
+    <section class="panel active" style="border-radius:12px;margin-top:20px">
+      <div class="controls">
+        <span class="lbl">District</span>
+        <select class="sel" id="sDist"><option value="">Choose a district…</option></select>
+        <span class="lbl">Block</span>
+        <select class="sel" id="sBlock"><option value="">All blocks</option></select>
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="sSearch" placeholder="Search school or UDISE…">
+        </div>
+        <div class="fchips" id="sFilter">
+          <button class="fchip active" data-f="all">All</button>
+          <button class="fchip" data-f="full">All 3 titles</button>
+          <button class="fchip" data-f="part">Partial</button>
+          <button class="fchip" data-f="none">Nothing yet</button>
+        </div>
+        <div class="spacer"></div>
+        <button class="btn" id="sExport" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export CSV
+        </button>
+      </div>
+      <div class="summary" id="sSummary"></div>
+      <div class="tablewrap" id="sTable"><div class="lazy">Pick a district above to list its schools.</div></div>
+    </section>
+  </div>
+
+  <!-- ============ REPORTS ============ -->
+  <div id="mod-reports" class="module">
+    <p class="modnote">One row per district, joining all three levels on a single screen. District figures are
+    scans against the work-order target. Block and school figures are built bottom-up from the master list:
+    <b>Started</b> counts a block or school that has received at least one of the three titles;
+    <b>All three</b> counts those that have received every title. Everything on this screen exports to Excel
+    exactly as shown.</p>
+
+    <div class="hero" id="rHero" style="margin-top:20px"></div>
+
+    <section class="panel active" style="border-radius:12px;margin-top:18px">
+      <div class="controls">
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="rSearch" placeholder="Search district…">
+        </div>
+        <span class="lbl">Sort by</span>
+        <select class="sel" id="rSort">
+          <option value="name">District (A–Z)</option>
+          <option value="dpct">District scan %</option>
+          <option value="miss">Titles below 100%</option>
+          <option value="bstart">Blocks started %</option>
+          <option value="ball">Blocks with all three %</option>
+          <option value="sstart">Schools started %</option>
+          <option value="sall">Schools with all three %</option>
+        </select>
+        <div class="spacer"></div>
+        <button class="btn primary" id="rExport" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export Excel
+        </button>
+      </div>
+      <div class="tablewrap" id="rTable"><div class="lazy"><div class="sp"></div>Preparing state report…</div></div>
+      <p class="cap">Cell colour follows share of target: green above 80%, amber 50–80%, red below 50%.
+      The workbook carries the same bands, so it reads the same on paper.</p>
+    </section>
+  </div>
+
+  <div class="foot">
+    <div>Master list: 75 districts · 1,016 blocks · 1,31,383 schools. Reads the backend Google Sheet live; nothing is stored by this page.</div>
+    <div id="footNote"></div>
+  </div>
+</div>
+
+<script id="payload" type="application/octet-stream">__PAYLOAD__</script>
+<script>
+"use strict";
+
+/* ============ Titles ============ */
+const TITLES = [
+  {key:"tgm", label:"Teacher Guide — Math (Class 1–3)",  short:"TG Math",        col:"TG Math",       color:"var(--t0)", hex:"#12A18E"},
+  {key:"tgh", label:"Teacher Guide — Hindi (Class 1–3)", short:"TG Hindi",       col:"TG Hindi",      color:"var(--t1)", hex:"#2563A8"},
+  {key:"td",  label:"Teacher Diary (Class 1–8)",         short:"Teacher Diary",  col:"Teacher Diary", color:"var(--t2)", hex:"#9C4A12"}
+];
+
+/* Embedded district targets, straight from the master work-order sheet.
+   Sheet-supplied targets override these when the backend sheet carries them. */
+__TARGETS__
+
+const INTEGRITY = __INTEGRITY__;
+
+/* ============ Backend sheet ============ */
+const SHEET_ID = "1YyBUXBQ8ID9ALl4ZCfXZ-zrVEra6n3Dcw6PTW_36JrE";
+const GID = {district:"0", block:"872546719", school:"1341514569"};
+const REFRESH_MS = 300000;
+
+/* ============ Small helpers ============ */
+const $ = s => document.querySelector(s);
+const norm = s => String(s==null?"":s).toUpperCase().replace(/[^A-Z0-9]/g,"");
+const fmt = n => Number(n||0).toLocaleString("en-IN");
+const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pctOf = (r,t) => t>0 ? (r/t)*100 : (r>0?100:0);
+const fmtTime = d => d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+
+/* A cell counts as "reached" when it holds anything other than blank or zero.
+   Numbers are compared numerically; text like YES / Y / received also counts,
+   while explicit negatives (NO, NIL, N/A, -) do not. */
+function reached(v){
+  const s = String(v==null?"":v).trim();
+  if(!s) return false;
+  const n = Number(s.replace(/,/g,""));
+  if(Number.isFinite(n)) return n !== 0;
+  return !/^(no|n|nil|na|n\/a|none|-|–|—|0)$/i.test(s);
+}
+function num(v){
+  const n = Number(String(v==null?"":v).replace(/[, ]/g,""));
+  return Number.isFinite(n) ? n : 0;
+}
+
+const BAND = [
+  {key:"high", min:80,  label:"80% and above", color:"#2F855A"},
+  {key:"mid",  min:50,  label:"50–80%",        color:"#C98A1A"},
+  {key:"low",  min:0.0001, label:"Below 50%",  color:"#C13B3B"},
+  {key:"none", min:-1,  label:"Not reached",   color:"#8E2020"}
+];
+const bandOf = p => BAND.find(b => p >= b.min) || BAND[3];
+
+/* ============ CSV parsing ============ */
+function parseCSV(text){
+  const rows=[]; let row=[], cell="", q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){
+      if(c === '"'){ if(text[i+1] === '"'){ cell+='"'; i++; } else q=false; }
+      else cell+=c;
+    } else if(c === '"'){ q=true; }
+    else if(c === ","){ row.push(cell); cell=""; }
+    else if(c === "\n"){ row.push(cell); rows.push(row); row=[]; cell=""; }
+    else if(c !== "\r"){ cell+=c; }
+  }
+  if(cell.length || row.length){ row.push(cell); rows.push(row); }
+  return rows.filter(r => r.some(c => String(c).trim() !== ""));
+}
+
+/* Locate columns by meaning, so the sheet can be relabelled without breaking. */
+function mapCols(header){
+  const H = header.map(h => norm(h));
+  const find = test => { for(let i=0;i<H.length;i++) if(test(H[i], header[i])) return i; return -1; };
+  const m = {
+    district: find(h => h.includes("DISTRICT") || h.includes("JANPAD")),
+    block:    find(h => h.includes("BLOCK") && !h.includes("CODE")),
+    code:     find(h => h.includes("BLOCKCODE") || (h.includes("CODE") && !h.includes("UDISE"))),
+    udise:    find(h => h.includes("UDISE") || h.includes("SCHOOLCODE")),
+    school:   find(h => h.includes("SCHOOLNAME") || (h.includes("SCHOOL") && !h.includes("CODE"))),
+    tgt:{}, rcv:{}, val:{}
+  };
+  const isMath  = h => h.includes("MATH") || h.includes("GANIT");
+  const isHindi = h => h.includes("HINDI") || h.includes("BHASHA") || h.includes("LANG");
+  const isDiary = h => h.includes("DIARY") || h.includes("DAIRY") || h.includes("TD");
+  const tests = {tgm:isMath, tgh:isHindi, td:isDiary};
+  for(const t of TITLES){
+    const hit = tests[t.key];
+    m.tgt[t.key] = find(h => hit(h) && h.includes("TARGET"));
+    m.rcv[t.key] = find(h => hit(h) && (h.includes("RECEIVED")||h.includes("RECD")||h.includes("RECV")||h.includes("SCAN")));
+    m.val[t.key] = find(h => hit(h) && !h.includes("TARGET"));
+  }
+  return m;
+}
+
+/* ============ gviz ============ */
+const sheetId = SHEET_ID;
+let lastUpdated = null;
+
+async function fetchTab(gid){
+  const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&gid=${gid}`;
+  let res;
+  try{
+    res = await fetch(url, {cache:"no-store"});
+  }catch(e){
+    // A private sheet redirects to accounts.google.com, which fails CORS before
+    // any body is readable — so a network-level failure here means "not shared".
+    throw new Error("not-public");
+  }
+  if(!res.ok) throw new Error(`HTTP ${res.status}`);
+  const txt = await res.text();
+  if(/^\s*<!DOCTYPE|^\s*<html/i.test(txt)) throw new Error("not-public");
+  return parseCSV(txt);
+}
+
+function setSource(state, detail){
+  const st = $("#srcStatus");
+  if(state === "live"){
+    st.innerHTML = `<span class="livedot"></span><b>Live</b>`
+      + (lastUpdated ? ` <span class="sep">·</span> updated ${fmtTime(lastUpdated)}` : ``)
+      + ` <span class="sep">·</span> auto-refresh every ${Math.round(REFRESH_MS/60000)} min`
+      + (detail ? ` <span class="sep">·</span> ${detail}` : ``);
+  } else if(state === "err"){
+    st.innerHTML = `<span class="errdot"></span><b style="color:var(--red)">Data not loading</b> <span class="sep">·</span> ${detail||""}`;
+  } else if(state === "demo"){
+    st.innerHTML = `<span class="livedot" style="background:var(--amber);box-shadow:0 0 0 3px rgba(201,138,26,.16)"></span><b>Demo data</b> <span class="sep">·</span> randomly generated, for layout preview only.`;
+  } else {
+    st.innerHTML = `<div class="sp" style="display:inline-block"></div> ${detail||"Loading…"}`;
+  }
+}
+
+/* ============ Master data (embedded, gzip+base64) ============ */
+let MASTER = null;
+async function loadMaster(){
+  if(MASTER) return MASTER;
+  const b64 = document.getElementById("payload").textContent.trim();
+  const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const txt = await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
+  const [dPart, bPart, sPart] = txt.split("\n@@\n");
+  const districts = dPart.split("\t");
+  const blocks = bPart.split("\n").map(l => { const p=l.split("\t"); return {d:+p[0], name:p[1], code:p[2]}; });
+  const schools = sPart.split("\n").map(l => { const p=l.split("\t"); return {b:+p[0], udise:p[1], name:p[2]}; });
+  MASTER = {districts, blocks, schools};
+  return MASTER;
+}
+
+/* ============ State ============ */
+const DIST_NAMES = TARGET_ROWS.map(r => r[0]);
+const DIST_KEY = DIST_NAMES.map(norm);
+const KEY_TO_I = Object.fromEntries(DIST_KEY.map((k,i) => [k,i]));
+
+let DATA = {
+  district: null,   // [{name, tgt:{}, rcv:{}}]
+  block: null,      // Map blockKey -> {tgm,tgh,td}
+  school: null,     // Map udise -> {tgm,tgh,td}
+  unmatched: {district:[], block:[], school:0}
+};
+
+/* ---- district ---- */
+function baseDistricts(){
+  return TARGET_ROWS.map(r => ({
+    name:r[0], key:norm(r[0]),
+    tgt:{tgm:r[1], tgh:r[2], td:r[3]},
+    rcv:{tgm:0, tgh:0, td:0}
+  }));
+}
+function applyDistrictRows(rows){
+  const out = baseDistricts();
+  const unmatched = [];
+  if(!rows || rows.length < 2){ DATA.district = out; DATA.unmatched.district = unmatched; return; }
+  const m = mapCols(rows[0]);
+  if(m.district < 0){ DATA.district = out; return; }
+  for(let i=1;i<rows.length;i++){
+    const r = rows[i];
+    const k = norm(r[m.district]);
+    const idx = KEY_TO_I[k];
+    if(idx === undefined){ if(k) unmatched.push(r[m.district]); continue; }
+    const d = out[idx];
+    for(const t of TITLES){
+      if(m.tgt[t.key] >= 0 && String(r[m.tgt[t.key]]||"").trim() !== "") d.tgt[t.key] = num(r[m.tgt[t.key]]);
+      // Prefer an explicit "Received" column; fall back to the plain title column.
+      const ri = m.rcv[t.key] >= 0 ? m.rcv[t.key] : m.val[t.key];
+      if(ri >= 0) d.rcv[t.key] = num(r[ri]);
+    }
+  }
+  DATA.district = out;
+  DATA.unmatched.district = unmatched;
+}
+
+/* ---- block / school ---- */
+function applyBlockRows(rows){
+  const map = new Map(); const unmatched = [];
+  if(!rows || rows.length < 2){ DATA.block = map; return; }
+  const m = mapCols(rows[0]);
+  for(let i=1;i<rows.length;i++){
+    const r = rows[i];
+    const dk = m.district >= 0 ? norm(r[m.district]) : "";
+    const bk = m.block >= 0 ? norm(r[m.block]) : "";
+    if(!dk && !bk) continue;
+    const key = dk + "|" + bk;
+    const rec = {};
+    for(const t of TITLES) rec[t.key] = m.val[t.key] >= 0 ? reached(r[m.val[t.key]]) : false;
+    map.set(key, rec);
+    if(m.code >= 0 && String(r[m.code]||"").trim()) map.set("#" + String(r[m.code]).trim(), rec);
+  }
+  DATA.block = map;
+  DATA.unmatched.block = unmatched;
+}
+function applySchoolRows(rows){
+  const map = new Map();
+  if(!rows || rows.length < 2){ DATA.school = map; return; }
+  const m = mapCols(rows[0]);
+  if(m.udise < 0){ DATA.school = map; return; }
+  for(let i=1;i<rows.length;i++){
+    const r = rows[i];
+    const u = String(r[m.udise]||"").trim().replace(/\.0$/,"");
+    if(!u) continue;
+    const rec = {};
+    for(const t of TITLES) rec[t.key] = m.val[t.key] >= 0 ? reached(r[m.val[t.key]]) : false;
+    map.set(u, rec);
+  }
+  DATA.school = map;
+}
+
+/* ============ District rendering ============ */
+function districtRows(){
+  return (DATA.district || baseDistricts()).map(d => {
+    const T = TITLES.reduce((s,t) => s + d.tgt[t.key], 0);
+    const R = TITLES.reduce((s,t) => s + d.rcv[t.key], 0);
+    return {...d, totT:T, totR:R, pct:pctOf(R,T)};
+  });
+}
+function meterCell(r,t,hex){
+  const p = pctOf(r,t);
+  const w = Math.max(0, Math.min(100, p));
+  const col = p<=0 ? "#D8D5CE" : hex;
+  return `<div class="meter"><span class="bar"><span class="fill" style="width:${w}%;background:${col}"></span></span><span class="pct">${p>0&&p<1?"<1":Math.round(p)}%</span></div>`;
+}
+function renderDistrict(){
+  const q = norm($("#dSearch").value);
+  const f = $("#dFilter").querySelector(".fchip.active").dataset.f;
+  let rows = districtRows();
+  if(q) rows = rows.filter(r => r.key.includes(q));
+  if(f !== "all") rows = rows.filter(r => bandOf(r.pct).key === f);
+
+  const head = `<thead>
+    <tr class="grp"><th rowspan="2" style="text-align:left">District</th>`
+    + TITLES.map(t => `<th colspan="3" class="sep-l"><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:2px;background:${t.hex};display:inline-block"></span>${esc(t.short)}</span></th>`).join("")
+    + `<th colspan="2" class="sep-l">All titles</th></tr>
+    <tr class="sub">`
+    + TITLES.map(() => `<th class="num sep-l">Target</th><th class="num">Received</th><th>% received</th>`).join("")
+    + `<th class="num sep-l">Target</th><th>% received</th></tr></thead>`;
+
+  const body = rows.map(r => `<tr>
+    <td class="name">${esc(r.name)}</td>`
+    + TITLES.map(t => `<td class="num sep-l">${fmt(r.tgt[t.key])}</td><td class="num">${fmt(r.rcv[t.key])}</td><td>${meterCell(r.rcv[t.key], r.tgt[t.key], t.hex)}</td>`).join("")
+    + `<td class="num sep-l">${fmt(r.totT)}</td><td>${meterCell(r.totR, r.totT, "#0E7A6E")}</td></tr>`).join("");
+
+  const all = districtRows();
+  const sums = TITLES.map(t => ({T: all.reduce((s,d)=>s+d.tgt[t.key],0), R: all.reduce((s,d)=>s+d.rcv[t.key],0)}));
+  const gT = sums.reduce((s,x)=>s+x.T,0), gR = sums.reduce((s,x)=>s+x.R,0);
+  const foot = `<tfoot><tr><td>Uttar Pradesh — all 75</td>`
+    + sums.map((s,i) => `<td class="num sep-l">${fmt(s.T)}</td><td class="num">${fmt(s.R)}</td><td>${meterCell(s.R,s.T,TITLES[i].hex)}</td>`).join("")
+    + `<td class="num sep-l">${fmt(gT)}</td><td>${meterCell(gR,gT,"#0E7A6E")}</td></tr></tfoot>`;
+
+  $("#dTable").innerHTML = rows.length
+    ? `<table>${head}<tbody>${body}</tbody>${foot}</table>`
+    : `<div class="empty">No district matches that filter.</div>`;
+  $("#chipTarget").textContent = fmt(gT);
+}
+
+function renderAnalysis(){
+  const rows = districtRows();
+  const tiles = TITLES.map(t => {
+    const T = rows.reduce((s,d)=>s+d.tgt[t.key],0), R = rows.reduce((s,d)=>s+d.rcv[t.key],0);
+    const p = pctOf(R,T);
+    return `<div class="tile">
+      <div class="tk"><span class="sw" style="background:${t.hex}"></span>${esc(t.short)}</div>
+      <div class="tv" style="color:${t.hex}">${p>0&&p<1?"<1":Math.round(p)}%</div>
+      <div class="ts">${fmt(R)} received of ${fmt(T)} targeted</div>
+      <div class="bar"><span class="fill" style="width:${Math.max(0,Math.min(100,p))}%;background:${t.hex}"></span></div>
+    </div>`;
+  }).join("");
+  $("#dHero").innerHTML = tiles;
+
+  const counts = BAND.map(b => ({...b, n: rows.filter(r => bandOf(r.pct).key === b.key).length}));
+  const tot = rows.length || 1;
+  $("#dDist").innerHTML = counts.filter(c=>c.n>0).map(c =>
+    `<span class="seg" style="flex:${c.n};background:${c.color}" title="${c.label}: ${c.n} districts">${c.n/tot > .06 ? c.n : ""}</span>`).join("");
+  $("#dDistLeg").innerHTML = counts.map(c =>
+    `<span class="li"><span class="d" style="background:${c.color}"></span>${c.label} — <b>${c.n}</b></span>`).join("");
+
+  const sorted = [...rows].sort((a,b) => b.pct - a.pct);
+  const bar = list => list.map(r => `<div class="rrow">
+      <span class="rn">${esc(r.name)}</span>
+      <span class="rb"><i style="width:${Math.max(1,Math.min(100,r.pct))}%"></i></span>
+      <span class="rv">${r.pct>0&&r.pct<1?"<1":Math.round(r.pct)}%</span>
+    </div>`).join("");
+  $("#dTop").innerHTML = bar(sorted.slice(0,10));
+  $("#dBot").innerHTML = bar(sorted.slice(-10).reverse());
+}
+
+function renderGaps(){
+  const rows = districtRows();
+  const gaps = [];
+  for(const r of rows) for(const t of TITLES)
+    if(r.rcv[t.key] <= 0 && r.tgt[t.key] > 0) gaps.push({d:r.name, t, tgt:r.tgt[t.key]});
+  gaps.sort((a,b) => b.tgt - a.tgt);
+  const badge = $("#gapBadge");
+  badge.textContent = gaps.length;
+  badge.classList.toggle("hidden", gaps.length === 0);
+  $("#dGaps").innerHTML = gaps.length ? `<table>
+    <thead><tr><th>District</th><th>Title</th><th class="num">Books still owed</th></tr></thead>
+    <tbody>${gaps.map(g => `<tr>
+      <td class="name">${esc(g.d)}</td>
+      <td><span style="display:inline-flex;align-items:center;gap:7px"><span style="width:9px;height:9px;border-radius:2px;background:${g.t.hex};display:inline-block"></span>${esc(g.t.short)}</span></td>
+      <td class="num">${fmt(g.tgt)}</td></tr>`).join("")}</tbody>
+    <tfoot><tr><td colspan="2">${gaps.length} district–title combinations with nothing received</td><td class="num">${fmt(gaps.reduce((s,g)=>s+g.tgt,0))}</td></tr></tfoot>
+  </table>` : `<div class="empty">Every district has received at least something of every title.</div>`;
+}
+
+/* ============ Block rendering ============ */
+function blockStatus(dKey, bKey, code){
+  const m = DATA.block;
+  const rec = m && (m.get(dKey + "|" + bKey) || (code ? m.get("#" + code) : null));
+  return TITLES.map(t => rec ? !!rec[t.key] : false);
+}
+function pillHTML(ok){
+  return ok
+    ? `<span class="pill yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>YES</span>`
+    : `<span class="pill no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>NO</span>`;
+}
+let blockRows = null;
+async function buildBlockRows(){
+  const M = await loadMaster();
+  blockRows = M.blocks.map(b => {
+    const dName = M.districts[b.d];
+    const st = blockStatus(norm(dName), norm(b.name), b.code);
+    return {district:dName, dKey:norm(dName), name:b.name, code:b.code, st, n:st.filter(Boolean).length};
+  });
+}
+async function renderBlock(){
+  if(!blockRows) await buildBlockRows();
+  const dsel = $("#bDist").value, q = norm($("#bSearch").value);
+  const f = $("#bFilter").querySelector(".fchip.active").dataset.f;
+  let rows = blockRows;
+  if(dsel) rows = rows.filter(r => r.dKey === dsel);
+  if(q){
+    const digits = q.replace(/\D/g,"");
+    rows = rows.filter(r => norm(r.name).includes(q) || (digits && String(r.code).includes(digits)));
+  }
+  if(f === "full") rows = rows.filter(r => r.n === 3);
+  else if(f === "part") rows = rows.filter(r => r.n > 0 && r.n < 3);
+  else if(f === "none") rows = rows.filter(r => r.n === 0);
+
+  const scope = dsel ? blockRows.filter(r => r.dKey === dsel) : blockRows;
+  $("#bSummary").innerHTML = `
+    <div class="scard"><div class="k">Blocks in view</div><div class="v">${fmt(scope.length)}</div><div class="s">${dsel ? esc($("#bDist").selectedOptions[0].text) : "All 75 districts"}</div></div>
+    ${TITLES.map((t,i) => {
+      const n = scope.filter(r => r.st[i]).length;
+      return `<div class="scard"><div class="k"><span class="sw" style="background:${t.hex}"></span>${esc(t.short)}</div><div class="v" style="color:${t.hex}">${fmt(n)}</div><div class="s">${Math.round(pctOf(n,scope.length))}% of blocks — YES</div></div>`;
+    }).join("")}
+    <div class="scard"><div class="k">All three titles</div><div class="v">${fmt(scope.filter(r=>r.n===3).length)}</div><div class="s">blocks fully served</div></div>
+    <div class="scard"><div class="k">Nothing yet</div><div class="v" style="color:var(--red)">${fmt(scope.filter(r=>r.n===0).length)}</div><div class="s">blocks with no title</div></div>`;
+
+  const head = `<thead><tr><th>District</th><th>Block</th><th class="num">Block code</th>`
+    + TITLES.map(t => `<th class="ctr sep-l"><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:2px;background:${t.hex};display:inline-block"></span>${esc(t.short)}</span></th>`).join("")
+    + `<th class="ctr sep-l">Titles reached</th></tr></thead>`;
+  const body = rows.map(r => `<tr>
+    <td class="dim">${esc(r.district)}</td><td class="name">${esc(r.name)}</td><td class="num dim">${esc(r.code)}</td>`
+    + r.st.map(ok => `<td class="ctr sep-l">${pillHTML(ok)}</td>`).join("")
+    + `<td class="ctr sep-l mono" style="font-weight:600;color:${r.n===3?"var(--green)":r.n===0?"var(--red)":"var(--amber)"}">${r.n} of 3</td></tr>`).join("");
+
+  $("#bTable").innerHTML = rows.length
+    ? `<table>${head}<tbody>${body}</tbody></table>`
+    : `<div class="empty">No block matches these filters.</div>`;
+}
+
+/* ============ School rendering ============ */
+let schoolIndex = null;   // district key -> [school rows]
+async function buildSchoolIndex(){
+  const M = await loadMaster();
+  schoolIndex = new Map();
+  for(const s of M.schools){
+    const b = M.blocks[s.b];
+    const dName = M.districts[b.d], dKey = norm(dName);
+    if(!schoolIndex.has(dKey)) schoolIndex.set(dKey, []);
+    schoolIndex.get(dKey).push({udise:s.udise, name:s.name, block:b.name, bKey:norm(b.name), district:dName});
+  }
+}
+function schoolStatus(udise){
+  const rec = DATA.school && DATA.school.get(udise);
+  return TITLES.map(t => rec ? !!rec[t.key] : false);
+}
+async function renderSchool(){
+  const dsel = $("#sDist").value;
+  if(!dsel){
+    $("#sTable").innerHTML = `<div class="lazy">Pick a district above to list its schools.</div>`;
+    $("#sSummary").innerHTML = "";
+    return;
+  }
+  if(!schoolIndex) await buildSchoolIndex();
+  const all = (schoolIndex.get(dsel) || []).map(s => {
+    const st = schoolStatus(s.udise);
+    return {...s, st, n:st.filter(Boolean).length};
+  });
+
+  const bsel = $("#sBlock").value, q = norm($("#sSearch").value);
+  const f = $("#sFilter").querySelector(".fchip.active").dataset.f;
+  let rows = all;
+  if(bsel) rows = rows.filter(r => r.bKey === bsel);
+  if(q) rows = rows.filter(r => norm(r.name).includes(q) || r.udise.includes(q));
+  if(f === "full") rows = rows.filter(r => r.n === 3);
+  else if(f === "part") rows = rows.filter(r => r.n > 0 && r.n < 3);
+  else if(f === "none") rows = rows.filter(r => r.n === 0);
+
+  const scope = bsel ? all.filter(r => r.bKey === bsel) : all;
+  $("#sSummary").innerHTML = `
+    <div class="scard"><div class="k">Schools in view</div><div class="v">${fmt(scope.length)}</div><div class="s">${esc($("#sDist").selectedOptions[0].text)}${bsel ? " · " + esc($("#sBlock").selectedOptions[0].text) : ""}</div></div>
+    ${TITLES.map((t,i) => {
+      const n = scope.filter(r => r.st[i]).length;
+      return `<div class="scard"><div class="k"><span class="sw" style="background:${t.hex}"></span>${esc(t.short)}</div><div class="v" style="color:${t.hex}">${fmt(n)}</div><div class="s">${Math.round(pctOf(n,scope.length))}% of schools — YES</div></div>`;
+    }).join("")}
+    <div class="scard"><div class="k">All three titles</div><div class="v">${fmt(scope.filter(r=>r.n===3).length)}</div><div class="s">schools fully served</div></div>
+    <div class="scard"><div class="k">Nothing yet</div><div class="v" style="color:var(--red)">${fmt(scope.filter(r=>r.n===0).length)}</div><div class="s">schools with no title</div></div>`;
+
+  const head = `<thead><tr><th class="num">UDISE</th><th>School</th><th>Block</th>`
+    + TITLES.map(t => `<th class="ctr sep-l"><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:2px;background:${t.hex};display:inline-block"></span>${esc(t.short)}</span></th>`).join("")
+    + `<th class="ctr sep-l">Titles reached</th></tr></thead>`;
+  const body = rows.map(r => `<tr>
+    <td class="num dim">${esc(r.udise)}</td><td class="name">${esc(r.name)}</td><td class="dim">${esc(r.block)}</td>`
+    + r.st.map(ok => `<td class="ctr sep-l">${pillHTML(ok)}</td>`).join("")
+    + `<td class="ctr sep-l mono" style="font-weight:600;color:${r.n===3?"var(--green)":r.n===0?"var(--red)":"var(--amber)"}">${r.n} of 3</td></tr>`).join("");
+
+  $("#sTable").innerHTML = rows.length
+    ? `<table>${head}<tbody>${body}</tbody></table>`
+    : `<div class="empty">No school matches these filters.</div>`;
+}
+
+async function fillSchoolBlocks(){
+  const dsel = $("#sDist").value;
+  const sel = $("#sBlock");
+  sel.innerHTML = `<option value="">All blocks</option>`;
+  if(!dsel) return;
+  const M = await loadMaster();
+  const names = M.blocks.filter(b => norm(M.districts[b.d]) === dsel).map(b => b.name).sort();
+  for(const n of names) sel.insertAdjacentHTML("beforeend", `<option value="${esc(norm(n))}">${esc(n)}</option>`);
+}
+
+/* ============ State report ============
+   One row per district, joining the district scan figures with block and school
+   roll-ups built from the embedded master list. */
+let reportRows = null;
+async function buildReportRows(){
+  const M = await loadMaster();
+  if(!blockRows) await buildBlockRows();
+  if(!schoolIndex) await buildSchoolIndex();
+
+  const byDist = new Map();
+  for(const d of districtRows()) byDist.set(d.key, {
+    name:d.name, key:d.key, tgt:d.tgt, rcv:d.rcv, dTgt:d.totT, dRec:d.totR, dPct:d.pct,
+    miss: TITLES.filter(t => pctOf(d.rcv[t.key], d.tgt[t.key]) < 100).map(t => t.short),
+    blocks:0, bStart:0, bAll:0, schools:0, sStart:0, sAll:0
+  });
+  for(const b of blockRows){
+    const r = byDist.get(b.dKey); if(!r) continue;
+    r.blocks++; if(b.n > 0) r.bStart++; if(b.n === 3) r.bAll++;
+  }
+  for(const [dKey, list] of schoolIndex){
+    const r = byDist.get(dKey); if(!r) continue;
+    for(const s of list){
+      const st = schoolStatus(s.udise), n = st.filter(Boolean).length;
+      r.schools++; if(n > 0) r.sStart++; if(n === 3) r.sAll++;
+    }
+  }
+  reportRows = [...byDist.values()].map(r => ({...r,
+    bStartPct: pctOf(r.bStart, r.blocks), bAllPct: pctOf(r.bAll, r.blocks),
+    sStartPct: pctOf(r.sStart, r.schools), sAllPct: pctOf(r.sAll, r.schools)
+  }));
+}
+
+function reportView(){
+  const q = norm($("#rSearch").value), sort = $("#rSort").value;
+  let rows = reportRows.filter(r => !q || r.key.includes(q));
+  const by = {
+    name: (a,b) => a.name.localeCompare(b.name),
+    dpct: (a,b) => b.dPct - a.dPct,
+    miss: (a,b) => b.miss.length - a.miss.length || a.name.localeCompare(b.name),
+    bstart: (a,b) => b.bStartPct - a.bStartPct,
+    ball: (a,b) => b.bAllPct - a.bAllPct,
+    sstart: (a,b) => b.sStartPct - a.sStartPct,
+    sall: (a,b) => b.sAllPct - a.sAllPct
+  }[sort];
+  return rows.sort(by);
+}
+const pClass = p => p > 80 ? "g" : p >= 50 ? "a" : "r";
+const pCell = p => `<td><span class="pcell ${pClass(p)}">${p>0&&p<1?"<1":Math.round(p*10)/10}%</span></td>`;
+
+function reportTotals(rows){
+  return rows.reduce((a,r) => ({
+    dTgt:a.dTgt+r.dTgt, dRec:a.dRec+r.dRec,
+    blocks:a.blocks+r.blocks, bStart:a.bStart+r.bStart, bAll:a.bAll+r.bAll,
+    schools:a.schools+r.schools, sStart:a.sStart+r.sStart, sAll:a.sAll+r.sAll,
+    clean:a.clean+(r.miss.length===0?1:0)
+  }), {dTgt:0,dRec:0,blocks:0,bStart:0,bAll:0,schools:0,sStart:0,sAll:0,clean:0});
+}
+
+async function renderReports(){
+  if(!reportRows) await buildReportRows();
+  const rows = reportView();
+  const T = reportTotals(reportRows);
+
+  $("#rHero").innerHTML = `
+    <div class="tile"><div class="tk">State — books received</div>
+      <div class="tv" style="color:var(--spine-deep)">${Math.round(pctOf(T.dRec,T.dTgt))}%</div>
+      <div class="ts">${fmt(T.dRec)} of ${fmt(T.dTgt)} targeted</div>
+      <div class="bar"><span class="fill" style="width:${Math.min(100,pctOf(T.dRec,T.dTgt))}%;background:var(--spine)"></span></div></div>
+    <div class="tile"><div class="tk">Blocks reached</div>
+      <div class="tv">${Math.round(pctOf(T.bStart,T.blocks))}%</div>
+      <div class="ts">${fmt(T.bStart)} of ${fmt(T.blocks)} blocks have at least one title · ${fmt(T.bAll)} have all three</div>
+      <div class="bar"><span class="fill" style="width:${pctOf(T.bStart,T.blocks)}%;background:var(--t1)"></span></div></div>
+    <div class="tile"><div class="tk">Schools reached</div>
+      <div class="tv">${Math.round(pctOf(T.sStart,T.schools))}%</div>
+      <div class="ts">${fmt(T.sStart)} of ${fmt(T.schools)} schools have at least one title · ${fmt(T.sAll)} have all three</div>
+      <div class="bar"><span class="fill" style="width:${pctOf(T.sStart,T.schools)}%;background:var(--t2)"></span></div></div>
+    <div class="tile"><div class="tk">Districts complete</div>
+      <div class="tv" style="color:${T.clean?"var(--green)":"var(--ink-faint)"}">${T.clean}</div>
+      <div class="ts">of 75 districts at 100% on all three titles</div>
+      <div class="bar"><span class="fill" style="width:${pctOf(T.clean,75)}%;background:var(--green)"></span></div></div>`;
+
+  const head = `<thead>
+    <tr class="band"><th class="col-name" rowspan="2">District</th>
+      <th class="g-dist sep-l" colspan="3">District level</th>
+      <th class="g-blk sep-l" colspan="3">Block level</th>
+      <th class="g-sch sep-l" colspan="3">School level</th></tr>
+    <tr class="head">
+      <th class="sep-l">Target</th><th>Received</th><th>Scans vs target</th>
+      <th class="sep-l">Blocks</th><th>Started</th><th>All three</th>
+      <th class="sep-l">Schools</th><th>Started</th><th>All three</th></tr></thead>`;
+
+  const body = rows.map(r => `<tr>
+    <td class="col-name">${esc(r.name)}</td>
+    <td class="num sep-l">${fmt(r.dTgt)}</td><td class="num">${fmt(r.dRec)}</td>${pCell(r.dPct)}
+    <td class="num sep-l">${fmt(r.blocks)}</td>${pCell(r.bStartPct)}${pCell(r.bAllPct)}
+    <td class="num sep-l">${fmt(r.schools)}</td>${pCell(r.sStartPct)}${pCell(r.sAllPct)}
+  </tr>`).join("");
+
+  const V = reportTotals(rows);
+  const q = norm($("#rSearch").value);
+  const tot = `<tr class="sr-tot">
+    <td class="col-name">${q ? fmt(rows.length)+" districts shown" : "Uttar Pradesh — 75 districts"}</td>
+    <td class="num sep-l">${fmt(V.dTgt)}</td><td class="num">${fmt(V.dRec)}</td>${pCell(pctOf(V.dRec,V.dTgt))}
+    <td class="num sep-l">${fmt(V.blocks)}</td>${pCell(pctOf(V.bStart,V.blocks))}${pCell(pctOf(V.bAll,V.blocks))}
+    <td class="num sep-l">${fmt(V.schools)}</td>${pCell(pctOf(V.sStart,V.schools))}${pCell(pctOf(V.sAll,V.schools))}
+  </tr>`;
+
+  $("#rTable").innerHTML = rows.length
+    ? `<table class="streport">${head}<tbody>${body}${tot}</tbody></table>`
+    : `<div class="empty">No district matches that search.</div>`;
+}
+
+/* ---- the Excel workbook: state report + one sheet per level ---- */
+async function exportReports(){
+  const btn = $("#rExport"), label = btn.innerHTML;
+  btn.disabled = true; btn.textContent = "Building…";
+  try{
+    if(!reportRows) await buildReportRows();
+    const rows = reportView(), V = reportTotals(rows);
+    const stamp = new Date().toLocaleDateString("en-IN", {day:"2-digit", month:"short", year:"numeric"});
+
+    /* Sheet 1 — State Report, mirroring the screen */
+    const sr = [];
+    sr.push([xt("TG & TD Distribution — State Report", XL.BTXT)]);
+    sr.push([xt(`Generated ${stamp} · ${DATA.demo ? "DEMO DATA" : "live from the backend sheet"}`)]);
+    sr.push([]);
+    sr.push([xt("District", XL.HEAD), xt("District level", XL.BAND), null, null,
+             xt("Block level", XL.BAND), null, null, xt("School level", XL.BAND), null, null]);
+    sr.push([xt("", XL.HEAD), xt("Target", XL.HEAD), xt("Received", XL.HEAD), xt("Scans vs target", XL.HEAD),
+             xt("Blocks", XL.HEAD), xt("Started", XL.HEAD), xt("All three", XL.HEAD),
+             xt("Schools", XL.HEAD), xt("Started", XL.HEAD), xt("All three", XL.HEAD)]);
+    for(const r of rows) sr.push([xt(r.name), xn(r.dTgt), xn(r.dRec), xp(r.dPct),
+      xn(r.blocks), xp(r.bStartPct), xp(r.bAllPct), xn(r.schools), xp(r.sStartPct), xp(r.sAllPct)]);
+    sr.push([xt("Uttar Pradesh — " + rows.length + " districts", XL.BTXT), xn(V.dTgt, XL.BINT), xn(V.dRec, XL.BINT), xp(pctOf(V.dRec,V.dTgt), true),
+      xn(V.blocks, XL.BINT), xp(pctOf(V.bStart,V.blocks), true), xp(pctOf(V.bAll,V.blocks), true),
+      xn(V.schools, XL.BINT), xp(pctOf(V.sStart,V.schools), true), xp(pctOf(V.sAll,V.schools), true)]);
+
+    /* Sheet 2 — District detail, title by title */
+    const dd = [[xt("District", XL.HEAD),
+      ...TITLES.flatMap(t => [xt(t.short+" target", XL.HEAD), xt(t.short+" received", XL.HEAD), xt(t.short+" %", XL.HEAD)]),
+      xt("Total target", XL.HEAD), xt("Total received", XL.HEAD), xt("Overall %", XL.HEAD)]];
+    for(const r of districtRows()) dd.push([xt(r.name),
+      ...TITLES.flatMap(t => [xn(r.tgt[t.key]), xn(r.rcv[t.key]), xp(pctOf(r.rcv[t.key], r.tgt[t.key]))]),
+      xn(r.totT), xn(r.totR), xp(r.pct)]);
+
+    /* Sheet 3 — every block, YES/NO */
+    const bd = [[xt("District", XL.HEAD), xt("Block", XL.HEAD), xt("Block code", XL.HEAD),
+      ...TITLES.map(t => xt(t.short, XL.HEAD)), xt("Titles reached", XL.HEAD)]];
+    for(const b of blockRows) bd.push([xt(b.district), xt(b.name), xt(String(b.code)),
+      ...b.st.map(x => xt(x ? "YES" : "NO")), xn(b.n)]);
+
+    /* Sheet 4 — block roll-up per district, the printable summary */
+    const bs = [[xt("District", XL.HEAD), xt("Blocks", XL.HEAD), xt("Started", XL.HEAD), xt("Started %", XL.HEAD),
+      xt("All three", XL.HEAD), xt("All three %", XL.HEAD),
+      xt("Schools", XL.HEAD), xt("Started", XL.HEAD), xt("Started %", XL.HEAD),
+      xt("All three", XL.HEAD), xt("All three %", XL.HEAD)]];
+    for(const r of reportView()) bs.push([xt(r.name), xn(r.blocks), xn(r.bStart), xp(r.bStartPct),
+      xn(r.bAll), xp(r.bAllPct), xn(r.schools), xn(r.sStart), xp(r.sStartPct), xn(r.sAll), xp(r.sAllPct)]);
+
+    await writeXlsx(`TG-TD-state-report-${new Date().toISOString().slice(0,10)}.xlsx`, [
+      {name:"State Report", rows:sr, cols:[26,13,13,15,10,12,12,11,12,12],
+       merges:["B4:D4","E4:G4","H4:J4","A4:A5"]},
+      {name:"District detail", rows:dd, cols:[24,14,15,11,14,15,11,14,15,11,13,14,11]},
+      {name:"Block status", rows:bd, cols:[20,26,12,12,12,14,14]},
+      {name:"Coverage roll-up", rows:bs, cols:[24,10,10,11,11,12,11,10,11,11,12]}
+    ]);
+  } finally {
+    btn.disabled = false; btn.innerHTML = label;
+  }
+}
+
+/* ============ XLSX writer ============
+   Writes a real .xlsx with no external library: a ZIP container built here,
+   deflated with CompressionStream where available, plus minimal SpreadsheetML.
+   Strings are inlined, so there is no shared-string table to maintain. */
+
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for(let i=0;i<256;i++){
+    let c = i;
+    for(let k=0;k<8;k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[i] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(buf){
+  let c = 0xFFFFFFFF;
+  for(let i=0;i<buf.length;i++) c = CRC_TABLE[(c ^ buf[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+async function deflateRaw(bytes){
+  if(typeof CompressionStream === "undefined") return null;
+  try{
+    const cs = new CompressionStream("deflate-raw");
+    const buf = await new Response(new Blob([bytes]).stream().pipeThrough(cs)).arrayBuffer();
+    return new Uint8Array(buf);
+  }catch(e){ return null; }
+}
+
+async function zipFile(files){
+  // files: [{name, bytes}] -> Blob of a ZIP archive
+  const enc = new TextEncoder();
+  const chunks = [], central = [];
+  let offset = 0;
+  for(const f of files){
+    const nameBytes = enc.encode(f.name);
+    const raw = f.bytes;
+    const packed = await deflateRaw(raw);
+    const useDeflate = !!packed && packed.length < raw.length;
+    const data = useDeflate ? packed : raw;
+    const method = useDeflate ? 8 : 0;
+    const crc = crc32(raw);
+
+    const local = new DataView(new ArrayBuffer(30));
+    local.setUint32(0, 0x04034b50, true);
+    local.setUint16(4, 20, true); local.setUint16(6, 0, true);
+    local.setUint16(8, method, true);
+    local.setUint16(10, 0, true); local.setUint16(12, 0, true);
+    local.setUint32(14, crc, true);
+    local.setUint32(18, data.length, true);
+    local.setUint32(22, raw.length, true);
+    local.setUint16(26, nameBytes.length, true); local.setUint16(28, 0, true);
+    chunks.push(new Uint8Array(local.buffer), nameBytes, data);
+
+    const cd = new DataView(new ArrayBuffer(46));
+    cd.setUint32(0, 0x02014b50, true);
+    cd.setUint16(4, 20, true); cd.setUint16(6, 20, true);
+    cd.setUint16(8, 0, true);
+    cd.setUint16(10, method, true);
+    cd.setUint16(12, 0, true); cd.setUint16(14, 0, true);
+    cd.setUint32(16, crc, true);
+    cd.setUint32(20, data.length, true);
+    cd.setUint32(24, raw.length, true);
+    cd.setUint16(28, nameBytes.length, true);
+    cd.setUint16(30, 0, true); cd.setUint16(32, 0, true);
+    cd.setUint16(34, 0, true); cd.setUint16(36, 0, true);
+    cd.setUint32(38, 0, true);
+    cd.setUint32(42, offset, true);
+    central.push(new Uint8Array(cd.buffer), nameBytes);
+    offset += 30 + nameBytes.length + data.length;
+  }
+  const cdSize = central.reduce((s,c) => s + c.length, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true);
+  end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+  end.setUint32(12, cdSize, true); end.setUint32(16, offset, true);
+  end.setUint16(20, 0, true);
+  return new Blob([...chunks, ...central, new Uint8Array(end.buffer)],
+    {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+}
+
+const xmlEsc = s => String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&apos;"}[c]));
+const colName = n => { let s=""; n++; while(n>0){ const m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=(n-m-1)/26; } return s; };
+
+/* Style ids used in cells below — index into the cellXfs list in STYLES_XML.
+   0 default · 1 bold header on dark band · 2 group band · 3 integer
+   4 percent green · 5 percent amber · 6 percent red · 7 bold text · 8 bold integer
+   9 bold percent (neutral) · 10 plain text wrapped */
+const XL = {DEF:0, HEAD:1, BAND:2, INT:3, PG:4, PA:5, PR:6, BTXT:7, BINT:8, BPCT:9};
+const STYLES_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<numFmts count="2"><numFmt numFmtId="164" formatCode="#,##0"/><numFmt numFmtId="165" formatCode="0.0&quot;%&quot;"/></numFmts>
+<fonts count="5">
+<font><sz val="11"/><name val="Calibri"/></font>
+<font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+<font><b/><sz val="11"/><color rgb="FF1A2233"/><name val="Calibri"/></font>
+<font><sz val="11"/><color rgb="FF1F6B45"/><name val="Calibri"/></font>
+<font><sz val="11"/><color rgb="FF8E2020"/><name val="Calibri"/></font>
+</fonts>
+<fills count="7">
+<fill><patternFill patternType="none"/></fill>
+<fill><patternFill patternType="gray125"/></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FF0E7A6E"/><bgColor indexed="64"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFEFEEE9"/><bgColor indexed="64"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFE7F3EC"/><bgColor indexed="64"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFFCF3DF"/><bgColor indexed="64"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFFBE7E7"/><bgColor indexed="64"/></patternFill></fill>
+</fills>
+<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>
+<border><left/><right/><top style="thin"><color rgb="FFBFBAAE"/></top><bottom/><diagonal/></border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="10">
+<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+<xf numFmtId="0" fontId="2" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="right"/></xf>
+<xf numFmtId="165" fontId="3" fillId="4" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center"/></xf>
+<xf numFmtId="165" fontId="2" fillId="5" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center"/></xf>
+<xf numFmtId="165" fontId="4" fillId="6" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center"/></xf>
+<xf numFmtId="0" fontId="2" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"/>
+<xf numFmtId="164" fontId="2" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right"/></xf>
+<xf numFmtId="165" fontId="2" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>
+</cellXfs>
+<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+
+/* Cell helpers: t(text) n(number) p(percent, banded by value) */
+const xt = (v, s=XL.DEF) => ({v, s, k:"s"});
+const xn = (v, s=XL.INT) => ({v, s, k:"n"});
+const xp = (v, bold=false) => ({v: Math.round(v*10)/10, k:"n",
+  s: bold ? XL.BPCT : (v > 80 ? XL.PG : v >= 50 ? XL.PA : XL.PR)});
+
+function sheetXml(rows, cols, merges){
+  let out = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetPr><outlinePr/></sheetPr>`;
+  if(cols && cols.length){
+    out += `<cols>` + cols.map((w,i) => `<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join("") + `</cols>`;
+  }
+  out += `<sheetData>`;
+  rows.forEach((row, r) => {
+    out += `<row r="${r+1}">`;
+    row.forEach((c, i) => {
+      if(c == null) return;
+      const cell = (typeof c === "object" && c.k) ? c : xt(c);
+      const ref = colName(i) + (r+1);
+      if(cell.k === "n" && cell.v !== "" && Number.isFinite(Number(cell.v)))
+        out += `<c r="${ref}" s="${cell.s}"><v>${Number(cell.v)}</v></c>`;
+      else
+        out += `<c r="${ref}" s="${cell.s}" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(cell.v)}</t></is></c>`;
+    });
+    out += `</row>`;
+  });
+  out += `</sheetData>`;
+  if(merges && merges.length)
+    out += `<mergeCells count="${merges.length}">` + merges.map(m => `<mergeCell ref="${m}"/>`).join("") + `</mergeCells>`;
+  out += `</worksheet>`;
+  return out;
+}
+
+async function writeXlsx(filename, sheets){
+  // sheets: [{name, rows, cols, merges, freeze}]
+  const enc = new TextEncoder();
+  const files = [];
+  const push = (name, str) => files.push({name, bytes: enc.encode(str)});
+
+  push("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+${sheets.map((s,i) => `<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("")}
+</Types>`);
+  push("_rels/.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`);
+  push("xl/workbook.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheets>${sheets.map((s,i) => `<sheet name="${xmlEsc(s.name).slice(0,31)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join("")}</sheets>
+</workbook>`);
+  push("xl/_rels/workbook.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+${sheets.map((s,i) => `<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join("")}
+<Relationship Id="rId${sheets.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`);
+  push("xl/styles.xml", STYLES_XML);
+  sheets.forEach((s,i) => push(`xl/worksheets/sheet${i+1}.xml`, sheetXml(s.rows, s.cols, s.merges)));
+
+  const blob = await zipFile(files);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+/* ============ Export ============ */
+function download(name, text){
+  const url = URL.createObjectURL(new Blob(["﻿"+text], {type:"text/csv;charset=utf-8"}));
+  const a = document.createElement("a");
+  a.href = url; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+const csvCell = v => `"${String(v==null?"":v).replace(/"/g,'""')}"`;
+const toCSV = rows => rows.map(r => r.map(csvCell).join(",")).join("\n");
+
+/* ============ Wiring ============ */
+function initSelects(){
+  const opts = DIST_NAMES.map((n,i) => `<option value="${DIST_KEY[i]}">${esc(n)}</option>`).join("");
+  $("#bDist").insertAdjacentHTML("beforeend", opts);
+  $("#sDist").insertAdjacentHTML("beforeend", opts);
+}
+
+function renderAll(){
+  renderDistrict(); renderAnalysis(); renderGaps();
+  // block and report roll-ups are derived from the sheet, so drop them on reload
+  blockRows = null; reportRows = null;
+  if($("#mod-block").classList.contains("active")) renderBlock();
+  if($("#mod-school").classList.contains("active")) renderSchool();
+  if($("#mod-reports").classList.contains("active")) renderReports();
+}
+
+async function loadAll(showStatus){
+  if(showStatus) setSource("loading", "Reading the backend sheet…");
+  const results = {};
+  const jobs = [["district",GID.district],["block",GID.block],["school",GID.school]];
+  const errs = [];
+  await Promise.all(jobs.map(async ([k,gid]) => {
+    try{ results[k] = await fetchTab(gid); }
+    catch(e){ errs.push(`${k}: ${e.message}`); results[k] = null; }
+  }));
+  DATA.demo = false;
+  if(results.district) applyDistrictRows(results.district);
+  if(results.block) applyBlockRows(results.block);
+  if(results.school) applySchoolRows(results.school);
+  lastUpdated = new Date();
+
+  if(errs.length === 3){
+    setSource("err", errs.some(e => e.includes("not-public"))
+      ? `the backend sheet is not readable without signing in. Open it → <b>Share</b> → <b>General access: Anyone with the link · Viewer</b>, then press <b>Refresh</b>.`
+      : esc(errs.join(" · ")));
+  } else {
+    const bits = [];
+    if(results.district) bits.push(`${results.district.length-1} district rows`);
+    if(results.block) bits.push(`${results.block.length-1} block rows`);
+    if(results.school) bits.push(`${fmt(results.school.length-1)} school rows`);
+    setSource("live", bits.join(", "));
+  }
+
+  const mr = [];
+  if(DATA.unmatched.district && DATA.unmatched.district.length)
+    mr.push(`<b>${DATA.unmatched.district.length}</b> district name(s) in the sheet did not match the master list and were skipped: ${DATA.unmatched.district.slice(0,6).map(esc).join(", ")}${DATA.unmatched.district.length>6?"…":""}`);
+  if(INTEGRITY.emptyBlocks.length)
+    mr.push(`<b>${INTEGRITY.emptyBlocks.length}</b> block(s) in the block master have no schools in the school master, so they show at block level only: ${INTEGRITY.emptyBlocks.slice(0,4).map(b=>esc(b.district+" / "+b.block)).join(", ")}${INTEGRITY.emptyBlocks.length>4?"…":""}`);
+  $("#matchReport").innerHTML = mr.join("<br>");
+
+  renderAll();
+}
+
+/* Demo data — random, for layout preview when the sheet is not yet public. */
+function demo(){
+  const d = baseDistricts();
+  for(const x of d) for(const t of TITLES){
+    const r = Math.random();
+    x.rcv[t.key] = r < .08 ? 0 : Math.round(x.tgt[t.key] * Math.min(1.02, r + .15));
+  }
+  DATA.district = d; DATA.demo = true;
+  DATA.block = new Map(); DATA.school = new Map();
+  loadMaster().then(M => {
+    for(const b of M.blocks){
+      const k = norm(M.districts[b.d]) + "|" + norm(b.name);
+      DATA.block.set(k, {tgm:Math.random()>.25, tgh:Math.random()>.3, td:Math.random()>.45});
+    }
+    for(const s of M.schools){
+      if(Math.random() > .55) continue;
+      DATA.school.set(s.udise, {tgm:Math.random()>.3, tgh:Math.random()>.35, td:Math.random()>.5});
+    }
+    setSource("demo");
+    renderAll();
+  });
+}
+
+function wire(){
+  document.querySelectorAll(".modbtn").forEach(b => b.addEventListener("click", () => {
+    document.querySelectorAll(".modbtn").forEach(x => x.classList.remove("active"));
+    document.querySelectorAll(".module").forEach(x => x.classList.remove("active"));
+    b.classList.add("active");
+    $("#mod-" + b.dataset.mod).classList.add("active");
+    if(b.dataset.mod === "block") renderBlock();
+    if(b.dataset.mod === "school") renderSchool();
+    if(b.dataset.mod === "reports") renderReports();
+  }));
+  document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+    document.querySelectorAll("#mod-district .panel").forEach(x => x.classList.remove("active"));
+    b.classList.add("active");
+    $("#panel-" + b.dataset.tab).classList.add("active");
+  }));
+  const chipGroup = (sel, fn) => $(sel).addEventListener("click", e => {
+    const c = e.target.closest(".fchip"); if(!c) return;
+    $(sel).querySelectorAll(".fchip").forEach(x => x.classList.remove("active"));
+    c.classList.add("active"); fn();
+  });
+  chipGroup("#dFilter", renderDistrict);
+  chipGroup("#bFilter", renderBlock);
+  chipGroup("#sFilter", renderSchool);
+
+  $("#dSearch").addEventListener("input", renderDistrict);
+  $("#bSearch").addEventListener("input", renderBlock);
+  $("#sSearch").addEventListener("input", renderSchool);
+  $("#bDist").addEventListener("change", renderBlock);
+  $("#sDist").addEventListener("change", async () => { await fillSchoolBlocks(); renderSchool(); });
+  $("#sBlock").addEventListener("change", renderSchool);
+
+  $("#rSearch").addEventListener("input", renderReports);
+  $("#rSort").addEventListener("change", renderReports);
+  $("#rExport").addEventListener("click", exportReports);
+
+  $("#refreshBtn").addEventListener("click", () => loadAll(true));
+
+  $("#dExport").addEventListener("click", () => {
+    const head = ["District", ...TITLES.flatMap(t => [`${t.short} Target`, `${t.short} Received`, `${t.short} % Received`]), "Total Target", "Total Received", "Overall % Received"];
+    const body = districtRows().map(r => [r.name,
+      ...TITLES.flatMap(t => [r.tgt[t.key], r.rcv[t.key], pctOf(r.rcv[t.key], r.tgt[t.key]).toFixed(1)]),
+      r.totT, r.totR, r.pct.toFixed(1)]);
+    download("tg-td-district.csv", toCSV([head, ...body]));
+  });
+  $("#bExport").addEventListener("click", async () => {
+    if(!blockRows) await buildBlockRows();
+    const dsel = $("#bDist").value;
+    const rows = dsel ? blockRows.filter(r => r.dKey === dsel) : blockRows;
+    const head = ["District","Block","Block Code", ...TITLES.map(t => t.short), "Titles Reached"];
+    download("tg-td-block.csv", toCSV([head, ...rows.map(r => [r.district, r.name, r.code, ...r.st.map(x => x?"YES":"NO"), r.n])]));
+  });
+  $("#sExport").addEventListener("click", async () => {
+    const dsel = $("#sDist").value;
+    if(!dsel){ alert("Choose a district first — the school export follows the district on screen."); return; }
+    if(!schoolIndex) await buildSchoolIndex();
+    const bsel = $("#sBlock").value;
+    let rows = (schoolIndex.get(dsel) || []).map(s => { const st = schoolStatus(s.udise); return {...s, st, n:st.filter(Boolean).length}; });
+    if(bsel) rows = rows.filter(r => r.bKey === bsel);
+    const head = ["District","Block","UDISE Code","School Name", ...TITLES.map(t => t.short), "Titles Reached"];
+    download("tg-td-school.csv", toCSV([head, ...rows.map(r => [r.district, r.block, r.udise, r.name, ...r.st.map(x => x?"YES":"NO"), r.n])]));
+  });
+}
+
+(function init(){
+  $("#footNote").textContent = `Master built ${INTEGRITY.builtOn}`;
+  initSelects();
+  wire();
+  renderAll();
+  // ?demo=1 fills the page with random numbers — for previewing the layout
+  // before the backend sheet is shared. Not linked from the UI.
+  if(/[?&]demo=1/.test(location.search)){ demo(); return; }
+  loadAll(true);
+  setInterval(() => loadAll(false), REFRESH_MS);
+})();
+</script>
+</body>
+</html>
