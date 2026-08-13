@@ -69,7 +69,8 @@ A school missing from the sheet simply reads NO everywhere.
 ## 3. Publish the dashboard
 
 `docs/index.html` is fully self-contained (the master list is embedded, gzip-compressed).
-Push the repo to GitHub and turn on **Pages → Deploy from branch → main → /docs**.
+Live at **https://bhatjunaids.github.io/tgtd-tracker/** — GitHub Pages serves `/docs` from `main`,
+so any push that changes `docs/index.html` redeploys within a minute.
 
 ---
 
