@@ -444,6 +444,54 @@ function num(v){
   return Number.isFinite(n) ? n : 0;
 }
 
+/* ---- Scan dates ----
+   Officers may type 02-04-26, or Sheets may hand us an ISO date, a locale
+   string, or a raw serial number depending on how the cell is formatted.
+   Day-first is assumed for ambiguous d/m/y, matching the dd-mm-yy convention. */
+const p2 = n => String(n).padStart(2,"0");
+function mkDate(y, mo, d, h, mi, s){
+  const dt = new Date(y, mo-1, d, h||0, mi||0, s||0);
+  // reject impossible dates like 32-13-26, which JS would silently roll over
+  return (dt.getFullYear()===y && dt.getMonth()===mo-1 && dt.getDate()===d) ? dt : null;
+}
+function parseScanDate(v){
+  const s = String(v==null?"":v).trim();
+  if(!s) return null;
+  let m;
+  if((m = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[T ,]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/)))
+    return mkDate(+m[1], +m[2], +m[3], +m[4], +m[5], +m[6]);
+  if((m = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})(?:[T ,]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/))){
+    let y = +m[3];
+    if(y < 100) y += y < 80 ? 2000 : 1900;
+    return mkDate(y, +m[2], +m[1], +m[4], +m[5], +m[6]);
+  }
+  if(/^\d+(\.\d+)?$/.test(s)){                       // Excel / Sheets serial day
+    const n = Number(s);
+    if(n > 20000 && n < 80000){
+      const ms = Math.round((n - 25569) * 86400000);  // 25569 = days from 1899-12-30 to epoch
+      const d = new Date(ms);
+      return mkDate(d.getUTCFullYear(), d.getUTCMonth()+1, d.getUTCDate(),
+                    d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds());
+    }
+    return null;
+  }
+  const t = Date.parse(s);
+  return Number.isFinite(t) ? new Date(t) : null;
+}
+/* dd-mm-yy, the format asked for */
+const fmtDate = d => d ? `${p2(d.getDate())}-${p2(d.getMonth()+1)}-${String(d.getFullYear()).slice(-2)}` : "";
+const fmtDateLong = d => d
+  ? `${p2(d.getDate())}-${p2(d.getMonth()+1)}-${d.getFullYear()}`
+    + ((d.getHours()||d.getMinutes()) ? ` ${p2(d.getHours())}:${p2(d.getMinutes())}` : "")
+  : "";
+/* Table cell: dd-mm-yy, full timestamp on hover, em-dash when absent */
+function dateCell(rec, cls){
+  const d = rec && rec.date;
+  return d
+    ? `<td class="num dim${cls?" "+cls:""}" title="${esc(fmtDateLong(d))}${rec.dateRaw && rec.dateRaw !== fmtDate(d) ? " · sheet: "+esc(rec.dateRaw) : ""}">${fmtDate(d)}</td>`
+    : `<td class="num dim${cls?" "+cls:""}" style="color:var(--ink-faint)">${rec && rec.dateRaw ? `<span title="unrecognised date: ${esc(rec.dateRaw)}">?</span>` : "—"}</td>`;
+}
+
 const BAND = [
   {key:"high", min:80,  label:"80% and above", color:"#2F855A"},
   {key:"mid",  min:50,  label:"50–80%",        color:"#C98A1A"},
@@ -479,17 +527,20 @@ function mapCols(header){
     code:     find(h => h.includes("BLOCKCODE") || (h.includes("CODE") && !h.includes("UDISE"))),
     udise:    find(h => h.includes("UDISE") || h.includes("SCHOOLCODE")),
     school:   find(h => h.includes("SCHOOLNAME") || (h.includes("SCHOOL") && !h.includes("CODE"))),
+    date:     find(h => h.includes("DATE") || h.includes("SCANNEDON") || h.includes("TIMESTAMP")),
     tgt:{}, rcv:{}, val:{}
   };
   const isMath  = h => h.includes("MATH") || h.includes("GANIT");
   const isHindi = h => h.includes("HINDI") || h.includes("BHASHA") || h.includes("LANG");
   const isDiary = h => h.includes("DIARY") || h.includes("DAIRY") || h.includes("TD");
   const tests = {tgm:isMath, tgh:isHindi, td:isDiary};
+  // a date column must never be read as a title's status/received column
+  const notDate = h => !h.includes("DATE") && !h.includes("TIMESTAMP");
   for(const t of TITLES){
     const hit = tests[t.key];
-    m.tgt[t.key] = find(h => hit(h) && h.includes("TARGET"));
-    m.rcv[t.key] = find(h => hit(h) && (h.includes("RECEIVED")||h.includes("RECD")||h.includes("RECV")||h.includes("SCAN")));
-    m.val[t.key] = find(h => hit(h) && !h.includes("TARGET"));
+    m.tgt[t.key] = find(h => hit(h) && notDate(h) && h.includes("TARGET"));
+    m.rcv[t.key] = find(h => hit(h) && notDate(h) && (h.includes("RECEIVED")||h.includes("RECD")||h.includes("RECV")||h.includes("SCAN")));
+    m.val[t.key] = find(h => hit(h) && notDate(h) && !h.includes("TARGET"));
   }
   return m;
 }
@@ -562,7 +613,8 @@ function baseDistricts(){
   return TARGET_ROWS.map(r => ({
     name:r[0], key:norm(r[0]),
     tgt:{tgm:r[1], tgh:r[2], td:r[3]},
-    rcv:{tgm:0, tgh:0, td:0}
+    rcv:{tgm:0, tgh:0, td:0},
+    date:null, dateRaw:""
   }));
 }
 function applyDistrictRows(rows){
@@ -583,6 +635,7 @@ function applyDistrictRows(rows){
       const ri = m.rcv[t.key] >= 0 ? m.rcv[t.key] : m.val[t.key];
       if(ri >= 0) d.rcv[t.key] = num(r[ri]);
     }
+    if(m.date >= 0){ d.dateRaw = String(r[m.date]||"").trim(); d.date = parseScanDate(d.dateRaw); }
   }
   DATA.district = out;
   DATA.unmatched.district = unmatched;
@@ -601,6 +654,8 @@ function applyBlockRows(rows){
     const key = dk + "|" + bk;
     const rec = {};
     for(const t of TITLES) rec[t.key] = m.val[t.key] >= 0 ? reached(r[m.val[t.key]]) : false;
+    rec.dateRaw = m.date >= 0 ? String(r[m.date]||"").trim() : "";
+    rec.date = parseScanDate(rec.dateRaw);
     map.set(key, rec);
     if(m.code >= 0 && String(r[m.code]||"").trim()) map.set("#" + String(r[m.code]).trim(), rec);
   }
@@ -618,6 +673,8 @@ function applySchoolRows(rows){
     if(!u) continue;
     const rec = {};
     for(const t of TITLES) rec[t.key] = m.val[t.key] >= 0 ? reached(r[m.val[t.key]]) : false;
+    rec.dateRaw = m.date >= 0 ? String(r[m.date]||"").trim() : "";
+    rec.date = parseScanDate(rec.dateRaw);
     map.set(u, rec);
   }
   DATA.school = map;
@@ -647,22 +704,23 @@ function renderDistrict(){
   const head = `<thead>
     <tr class="grp"><th rowspan="2" style="text-align:left">District</th>`
     + TITLES.map(t => `<th colspan="3" class="sep-l"><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:2px;background:${t.hex};display:inline-block"></span>${esc(t.short)}</span></th>`).join("")
-    + `<th colspan="2" class="sep-l">All titles</th></tr>
+    + `<th colspan="3" class="sep-l">All titles</th></tr>
     <tr class="sub">`
     + TITLES.map(() => `<th class="num sep-l">Target</th><th class="num">Received</th><th>% received</th>`).join("")
-    + `<th class="num sep-l">Target</th><th>% received</th></tr></thead>`;
+    + `<th class="num sep-l">Target</th><th>% received</th><th class="num">Scan date</th></tr></thead>`;
 
   const body = rows.map(r => `<tr>
     <td class="name">${esc(r.name)}</td>`
     + TITLES.map(t => `<td class="num sep-l">${fmt(r.tgt[t.key])}</td><td class="num">${fmt(r.rcv[t.key])}</td><td>${meterCell(r.rcv[t.key], r.tgt[t.key], t.hex)}</td>`).join("")
-    + `<td class="num sep-l">${fmt(r.totT)}</td><td>${meterCell(r.totR, r.totT, "#0E7A6E")}</td></tr>`).join("");
+    + `<td class="num sep-l">${fmt(r.totT)}</td><td>${meterCell(r.totR, r.totT, "#0E7A6E")}</td>`
+    + dateCell(r) + `</tr>`).join("");
 
   const all = districtRows();
   const sums = TITLES.map(t => ({T: all.reduce((s,d)=>s+d.tgt[t.key],0), R: all.reduce((s,d)=>s+d.rcv[t.key],0)}));
   const gT = sums.reduce((s,x)=>s+x.T,0), gR = sums.reduce((s,x)=>s+x.R,0);
   const foot = `<tfoot><tr><td>Uttar Pradesh — all 75</td>`
     + sums.map((s,i) => `<td class="num sep-l">${fmt(s.T)}</td><td class="num">${fmt(s.R)}</td><td>${meterCell(s.R,s.T,TITLES[i].hex)}</td>`).join("")
-    + `<td class="num sep-l">${fmt(gT)}</td><td>${meterCell(gR,gT,"#0E7A6E")}</td></tr></tfoot>`;
+    + `<td class="num sep-l">${fmt(gT)}</td><td>${meterCell(gR,gT,"#0E7A6E")}</td><td></td></tr></tfoot>`;
 
   $("#dTable").innerHTML = rows.length
     ? `<table>${head}<tbody>${body}</tbody>${foot}</table>`
@@ -721,11 +779,11 @@ function renderGaps(){
 }
 
 /* ============ Block rendering ============ */
-function blockStatus(dKey, bKey, code){
+function blockRec(dKey, bKey, code){
   const m = DATA.block;
-  const rec = m && (m.get(dKey + "|" + bKey) || (code ? m.get("#" + code) : null));
-  return TITLES.map(t => rec ? !!rec[t.key] : false);
+  return (m && (m.get(dKey + "|" + bKey) || (code ? m.get("#" + code) : null))) || null;
 }
+const recStatus = rec => TITLES.map(t => rec ? !!rec[t.key] : false);
 function pillHTML(ok){
   return ok
     ? `<span class="pill yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>YES</span>`
@@ -736,8 +794,10 @@ async function buildBlockRows(){
   const M = await loadMaster();
   blockRows = M.blocks.map(b => {
     const dName = M.districts[b.d];
-    const st = blockStatus(norm(dName), norm(b.name), b.code);
-    return {district:dName, dKey:norm(dName), name:b.name, code:b.code, st, n:st.filter(Boolean).length};
+    const rec = blockRec(norm(dName), norm(b.name), b.code);
+    const st = recStatus(rec);
+    return {district:dName, dKey:norm(dName), name:b.name, code:b.code, st,
+            n:st.filter(Boolean).length, date:rec&&rec.date, dateRaw:rec?rec.dateRaw:""};
   });
 }
 async function renderBlock(){
@@ -766,11 +826,12 @@ async function renderBlock(){
 
   const head = `<thead><tr><th>District</th><th>Block</th><th class="num">Block code</th>`
     + TITLES.map(t => `<th class="ctr sep-l"><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:2px;background:${t.hex};display:inline-block"></span>${esc(t.short)}</span></th>`).join("")
-    + `<th class="ctr sep-l">Titles reached</th></tr></thead>`;
+    + `<th class="ctr sep-l">Titles reached</th><th class="num">Scan date</th></tr></thead>`;
   const body = rows.map(r => `<tr>
     <td class="dim">${esc(r.district)}</td><td class="name">${esc(r.name)}</td><td class="num dim">${esc(r.code)}</td>`
     + r.st.map(ok => `<td class="ctr sep-l">${pillHTML(ok)}</td>`).join("")
-    + `<td class="ctr sep-l mono" style="font-weight:600;color:${r.n===3?"var(--green)":r.n===0?"var(--red)":"var(--amber)"}">${r.n} of 3</td></tr>`).join("");
+    + `<td class="ctr sep-l mono" style="font-weight:600;color:${r.n===3?"var(--green)":r.n===0?"var(--red)":"var(--amber)"}">${r.n} of 3</td>`
+    + dateCell(r) + `</tr>`).join("");
 
   $("#bTable").innerHTML = rows.length
     ? `<table>${head}<tbody>${body}</tbody></table>`
@@ -789,10 +850,8 @@ async function buildSchoolIndex(){
     schoolIndex.get(dKey).push({udise:s.udise, name:s.name, block:b.name, bKey:norm(b.name), district:dName});
   }
 }
-function schoolStatus(udise){
-  const rec = DATA.school && DATA.school.get(udise);
-  return TITLES.map(t => rec ? !!rec[t.key] : false);
-}
+const schoolRec = udise => (DATA.school && DATA.school.get(udise)) || null;
+const schoolStatus = udise => recStatus(schoolRec(udise));
 async function renderSchool(){
   const dsel = $("#sDist").value;
   if(!dsel){
@@ -802,8 +861,8 @@ async function renderSchool(){
   }
   if(!schoolIndex) await buildSchoolIndex();
   const all = (schoolIndex.get(dsel) || []).map(s => {
-    const st = schoolStatus(s.udise);
-    return {...s, st, n:st.filter(Boolean).length};
+    const rec = schoolRec(s.udise), st = recStatus(rec);
+    return {...s, st, n:st.filter(Boolean).length, date:rec&&rec.date, dateRaw:rec?rec.dateRaw:""};
   });
 
   const bsel = $("#sBlock").value, q = norm($("#sSearch").value);
@@ -827,11 +886,12 @@ async function renderSchool(){
 
   const head = `<thead><tr><th class="num">UDISE</th><th>School</th><th>Block</th>`
     + TITLES.map(t => `<th class="ctr sep-l"><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:2px;background:${t.hex};display:inline-block"></span>${esc(t.short)}</span></th>`).join("")
-    + `<th class="ctr sep-l">Titles reached</th></tr></thead>`;
+    + `<th class="ctr sep-l">Titles reached</th><th class="num">Scan date</th></tr></thead>`;
   const body = rows.map(r => `<tr>
     <td class="num dim">${esc(r.udise)}</td><td class="name">${esc(r.name)}</td><td class="dim">${esc(r.block)}</td>`
     + r.st.map(ok => `<td class="ctr sep-l">${pillHTML(ok)}</td>`).join("")
-    + `<td class="ctr sep-l mono" style="font-weight:600;color:${r.n===3?"var(--green)":r.n===0?"var(--red)":"var(--amber)"}">${r.n} of 3</td></tr>`).join("");
+    + `<td class="ctr sep-l mono" style="font-weight:600;color:${r.n===3?"var(--green)":r.n===0?"var(--red)":"var(--amber)"}">${r.n} of 3</td>`
+    + dateCell(r) + `</tr>`).join("");
 
   $("#sTable").innerHTML = rows.length
     ? `<table>${head}<tbody>${body}</tbody></table>`
@@ -860,18 +920,22 @@ async function buildReportRows(){
   const byDist = new Map();
   for(const d of districtRows()) byDist.set(d.key, {
     name:d.name, key:d.key, tgt:d.tgt, rcv:d.rcv, dTgt:d.totT, dRec:d.totR, dPct:d.pct,
+    date:d.date, dateRaw:d.dateRaw,
     miss: TITLES.filter(t => pctOf(d.rcv[t.key], d.tgt[t.key]) < 100).map(t => t.short),
-    blocks:0, bStart:0, bAll:0, schools:0, sStart:0, sAll:0
+    blocks:0, bStart:0, bAll:0, bLast:null, schools:0, sStart:0, sAll:0, sLast:null
   });
+  const later = (a,b) => !b ? a : (!a || b > a) ? b : a;   // latest of two dates
   for(const b of blockRows){
     const r = byDist.get(b.dKey); if(!r) continue;
     r.blocks++; if(b.n > 0) r.bStart++; if(b.n === 3) r.bAll++;
+    if(b.n > 0) r.bLast = later(r.bLast, b.date);
   }
   for(const [dKey, list] of schoolIndex){
     const r = byDist.get(dKey); if(!r) continue;
     for(const s of list){
-      const st = schoolStatus(s.udise), n = st.filter(Boolean).length;
+      const rec = schoolRec(s.udise), n = recStatus(rec).filter(Boolean).length;
       r.schools++; if(n > 0) r.sStart++; if(n === 3) r.sAll++;
+      if(n > 0 && rec) r.sLast = later(r.sLast, rec.date);
     }
   }
   reportRows = [...byDist.values()].map(r => ({...r,
@@ -931,28 +995,29 @@ async function renderReports(){
 
   const head = `<thead>
     <tr class="band"><th class="col-name" rowspan="2">District</th>
-      <th class="g-dist sep-l" colspan="3">District level</th>
-      <th class="g-blk sep-l" colspan="3">Block level</th>
-      <th class="g-sch sep-l" colspan="3">School level</th></tr>
+      <th class="g-dist sep-l" colspan="4">District level</th>
+      <th class="g-blk sep-l" colspan="4">Block level</th>
+      <th class="g-sch sep-l" colspan="4">School level</th></tr>
     <tr class="head">
-      <th class="sep-l">Target</th><th>Received</th><th>Scans vs target</th>
-      <th class="sep-l">Blocks</th><th>Started</th><th>All three</th>
-      <th class="sep-l">Schools</th><th>Started</th><th>All three</th></tr></thead>`;
+      <th class="sep-l">Target</th><th>Received</th><th>Scans vs target</th><th>Scan date</th>
+      <th class="sep-l">Blocks</th><th>Started</th><th>All three</th><th>Latest scan</th>
+      <th class="sep-l">Schools</th><th>Started</th><th>All three</th><th>Latest scan</th></tr></thead>`;
 
   const body = rows.map(r => `<tr>
     <td class="col-name">${esc(r.name)}</td>
-    <td class="num sep-l">${fmt(r.dTgt)}</td><td class="num">${fmt(r.dRec)}</td>${pCell(r.dPct)}
-    <td class="num sep-l">${fmt(r.blocks)}</td>${pCell(r.bStartPct)}${pCell(r.bAllPct)}
-    <td class="num sep-l">${fmt(r.schools)}</td>${pCell(r.sStartPct)}${pCell(r.sAllPct)}
+    <td class="num sep-l">${fmt(r.dTgt)}</td><td class="num">${fmt(r.dRec)}</td>${pCell(r.dPct)}${dateCell(r)}
+    <td class="num sep-l">${fmt(r.blocks)}</td>${pCell(r.bStartPct)}${pCell(r.bAllPct)}${dateCell({date:r.bLast})}
+    <td class="num sep-l">${fmt(r.schools)}</td>${pCell(r.sStartPct)}${pCell(r.sAllPct)}${dateCell({date:r.sLast})}
   </tr>`).join("");
 
   const V = reportTotals(rows);
   const q = norm($("#rSearch").value);
+  const maxOf = k => rows.reduce((a,r) => !r[k] ? a : (!a || r[k] > a) ? r[k] : a, null);
   const tot = `<tr class="sr-tot">
     <td class="col-name">${q ? fmt(rows.length)+" districts shown" : "Uttar Pradesh — 75 districts"}</td>
-    <td class="num sep-l">${fmt(V.dTgt)}</td><td class="num">${fmt(V.dRec)}</td>${pCell(pctOf(V.dRec,V.dTgt))}
-    <td class="num sep-l">${fmt(V.blocks)}</td>${pCell(pctOf(V.bStart,V.blocks))}${pCell(pctOf(V.bAll,V.blocks))}
-    <td class="num sep-l">${fmt(V.schools)}</td>${pCell(pctOf(V.sStart,V.schools))}${pCell(pctOf(V.sAll,V.schools))}
+    <td class="num sep-l">${fmt(V.dTgt)}</td><td class="num">${fmt(V.dRec)}</td>${pCell(pctOf(V.dRec,V.dTgt))}${dateCell({date:maxOf("date")})}
+    <td class="num sep-l">${fmt(V.blocks)}</td>${pCell(pctOf(V.bStart,V.blocks))}${pCell(pctOf(V.bAll,V.blocks))}${dateCell({date:maxOf("bLast")})}
+    <td class="num sep-l">${fmt(V.schools)}</td>${pCell(pctOf(V.sStart,V.schools))}${pCell(pctOf(V.sAll,V.schools))}${dateCell({date:maxOf("sLast")})}
   </tr>`;
 
   $("#rTable").innerHTML = rows.length
@@ -974,45 +1039,49 @@ async function exportReports(){
     sr.push([xt("TG & TD Distribution — State Report", XL.BTXT)]);
     sr.push([xt(`Generated ${stamp} · ${DATA.demo ? "DEMO DATA" : "live from the backend sheet"}`)]);
     sr.push([]);
-    sr.push([xt("District", XL.HEAD), xt("District level", XL.BAND), null, null,
-             xt("Block level", XL.BAND), null, null, xt("School level", XL.BAND), null, null]);
-    sr.push([xt("", XL.HEAD), xt("Target", XL.HEAD), xt("Received", XL.HEAD), xt("Scans vs target", XL.HEAD),
-             xt("Blocks", XL.HEAD), xt("Started", XL.HEAD), xt("All three", XL.HEAD),
-             xt("Schools", XL.HEAD), xt("Started", XL.HEAD), xt("All three", XL.HEAD)]);
-    for(const r of rows) sr.push([xt(r.name), xn(r.dTgt), xn(r.dRec), xp(r.dPct),
-      xn(r.blocks), xp(r.bStartPct), xp(r.bAllPct), xn(r.schools), xp(r.sStartPct), xp(r.sAllPct)]);
-    sr.push([xt("Uttar Pradesh — " + rows.length + " districts", XL.BTXT), xn(V.dTgt, XL.BINT), xn(V.dRec, XL.BINT), xp(pctOf(V.dRec,V.dTgt), true),
-      xn(V.blocks, XL.BINT), xp(pctOf(V.bStart,V.blocks), true), xp(pctOf(V.bAll,V.blocks), true),
-      xn(V.schools, XL.BINT), xp(pctOf(V.sStart,V.schools), true), xp(pctOf(V.sAll,V.schools), true)]);
+    sr.push([xt("District", XL.HEAD), xt("District level", XL.BAND), null, null, null,
+             xt("Block level", XL.BAND), null, null, null, xt("School level", XL.BAND), null, null, null]);
+    sr.push([xt("", XL.HEAD), xt("Target", XL.HEAD), xt("Received", XL.HEAD), xt("Scans vs target", XL.HEAD), xt("Scan date", XL.HEAD),
+             xt("Blocks", XL.HEAD), xt("Started", XL.HEAD), xt("All three", XL.HEAD), xt("Latest scan", XL.HEAD),
+             xt("Schools", XL.HEAD), xt("Started", XL.HEAD), xt("All three", XL.HEAD), xt("Latest scan", XL.HEAD)]);
+    for(const r of rows) sr.push([xt(r.name), xn(r.dTgt), xn(r.dRec), xp(r.dPct), xd(r.date),
+      xn(r.blocks), xp(r.bStartPct), xp(r.bAllPct), xd(r.bLast),
+      xn(r.schools), xp(r.sStartPct), xp(r.sAllPct), xd(r.sLast)]);
+    const latest = k => rows.reduce((a,r) => !r[k] ? a : (!a || r[k] > a) ? r[k] : a, null);
+    sr.push([xt("Uttar Pradesh — " + rows.length + " districts", XL.BTXT), xn(V.dTgt, XL.BINT), xn(V.dRec, XL.BINT), xp(pctOf(V.dRec,V.dTgt), true), xd(latest("date")),
+      xn(V.blocks, XL.BINT), xp(pctOf(V.bStart,V.blocks), true), xp(pctOf(V.bAll,V.blocks), true), xd(latest("bLast")),
+      xn(V.schools, XL.BINT), xp(pctOf(V.sStart,V.schools), true), xp(pctOf(V.sAll,V.schools), true), xd(latest("sLast"))]);
 
     /* Sheet 2 — District detail, title by title */
     const dd = [[xt("District", XL.HEAD),
       ...TITLES.flatMap(t => [xt(t.short+" target", XL.HEAD), xt(t.short+" received", XL.HEAD), xt(t.short+" %", XL.HEAD)]),
-      xt("Total target", XL.HEAD), xt("Total received", XL.HEAD), xt("Overall %", XL.HEAD)]];
+      xt("Total target", XL.HEAD), xt("Total received", XL.HEAD), xt("Overall %", XL.HEAD), xt("Scan date", XL.HEAD)]];
     for(const r of districtRows()) dd.push([xt(r.name),
       ...TITLES.flatMap(t => [xn(r.tgt[t.key]), xn(r.rcv[t.key]), xp(pctOf(r.rcv[t.key], r.tgt[t.key]))]),
-      xn(r.totT), xn(r.totR), xp(r.pct)]);
+      xn(r.totT), xn(r.totR), xp(r.pct), xd(r.date)]);
 
     /* Sheet 3 — every block, YES/NO */
     const bd = [[xt("District", XL.HEAD), xt("Block", XL.HEAD), xt("Block code", XL.HEAD),
-      ...TITLES.map(t => xt(t.short, XL.HEAD)), xt("Titles reached", XL.HEAD)]];
+      ...TITLES.map(t => xt(t.short, XL.HEAD)), xt("Titles reached", XL.HEAD), xt("Scan date", XL.HEAD)]];
     for(const b of blockRows) bd.push([xt(b.district), xt(b.name), xt(String(b.code)),
-      ...b.st.map(x => xt(x ? "YES" : "NO")), xn(b.n)]);
+      ...b.st.map(x => xt(x ? "YES" : "NO")), xn(b.n), xd(b.date)]);
 
     /* Sheet 4 — block roll-up per district, the printable summary */
     const bs = [[xt("District", XL.HEAD), xt("Blocks", XL.HEAD), xt("Started", XL.HEAD), xt("Started %", XL.HEAD),
       xt("All three", XL.HEAD), xt("All three %", XL.HEAD),
+      xt("Latest block scan", XL.HEAD),
       xt("Schools", XL.HEAD), xt("Started", XL.HEAD), xt("Started %", XL.HEAD),
-      xt("All three", XL.HEAD), xt("All three %", XL.HEAD)]];
+      xt("All three", XL.HEAD), xt("All three %", XL.HEAD), xt("Latest school scan", XL.HEAD)]];
     for(const r of reportView()) bs.push([xt(r.name), xn(r.blocks), xn(r.bStart), xp(r.bStartPct),
-      xn(r.bAll), xp(r.bAllPct), xn(r.schools), xn(r.sStart), xp(r.sStartPct), xn(r.sAll), xp(r.sAllPct)]);
+      xn(r.bAll), xp(r.bAllPct), xd(r.bLast),
+      xn(r.schools), xn(r.sStart), xp(r.sStartPct), xn(r.sAll), xp(r.sAllPct), xd(r.sLast)]);
 
     await writeXlsx(`TG-TD-state-report-${new Date().toISOString().slice(0,10)}.xlsx`, [
-      {name:"State Report", rows:sr, cols:[26,13,13,15,10,12,12,11,12,12],
-       merges:["B4:D4","E4:G4","H4:J4","A4:A5"]},
-      {name:"District detail", rows:dd, cols:[24,14,15,11,14,15,11,14,15,11,13,14,11]},
-      {name:"Block status", rows:bd, cols:[20,26,12,12,12,14,14]},
-      {name:"Coverage roll-up", rows:bs, cols:[24,10,10,11,11,12,11,10,11,11,12]}
+      {name:"State Report", rows:sr, cols:[26,13,13,15,11,10,12,12,13,11,12,12,13],
+       merges:["B4:E4","F4:I4","J4:M4","A4:A5"]},
+      {name:"District detail", rows:dd, cols:[24,14,15,11,14,15,11,14,15,11,13,14,11,11]},
+      {name:"Block status", rows:bd, cols:[20,26,12,12,12,14,14,11]},
+      {name:"Coverage roll-up", rows:bs, cols:[24,10,10,11,11,12,15,11,10,11,11,12,16]}
     ]);
   } finally {
     btn.disabled = false; btn.innerHTML = label;
@@ -1106,10 +1175,10 @@ const colName = n => { let s=""; n++; while(n>0){ const m=(n-1)%26; s=String.fro
    0 default · 1 bold header on dark band · 2 group band · 3 integer
    4 percent green · 5 percent amber · 6 percent red · 7 bold text · 8 bold integer
    9 bold percent (neutral) · 10 plain text wrapped */
-const XL = {DEF:0, HEAD:1, BAND:2, INT:3, PG:4, PA:5, PR:6, BTXT:7, BINT:8, BPCT:9};
+const XL = {DEF:0, HEAD:1, BAND:2, INT:3, PG:4, PA:5, PR:6, BTXT:7, BINT:8, BPCT:9, DATE:10};
 const STYLES_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-<numFmts count="2"><numFmt numFmtId="164" formatCode="#,##0"/><numFmt numFmtId="165" formatCode="0.0&quot;%&quot;"/></numFmts>
+<numFmts count="3"><numFmt numFmtId="164" formatCode="#,##0"/><numFmt numFmtId="165" formatCode="0.0&quot;%&quot;"/><numFmt numFmtId="166" formatCode="dd-mm-yy"/></numFmts>
 <fonts count="5">
 <font><sz val="11"/><name val="Calibri"/></font>
 <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
@@ -1129,7 +1198,7 @@ const STYLES_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>
 <border><left/><right/><top style="thin"><color rgb="FFBFBAAE"/></top><bottom/><diagonal/></border></borders>
 <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="10">
+<cellXfs count="11">
 <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
 <xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
 <xf numFmtId="0" fontId="2" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
@@ -1140,6 +1209,7 @@ const STYLES_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <xf numFmtId="0" fontId="2" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"/>
 <xf numFmtId="164" fontId="2" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right"/></xf>
 <xf numFmtId="165" fontId="2" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>
+<xf numFmtId="166" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="center"/></xf>
 </cellXfs>
 <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
@@ -1149,6 +1219,11 @@ const xt = (v, s=XL.DEF) => ({v, s, k:"s"});
 const xn = (v, s=XL.INT) => ({v, s, k:"n"});
 const xp = (v, bold=false) => ({v: Math.round(v*10)/10, k:"n",
   s: bold ? XL.BPCT : (v > 80 ? XL.PG : v >= 50 ? XL.PA : XL.PR)});
+/* Real Excel date serial so the column sorts and filters as a date, shown dd-mm-yy.
+   Built from local date parts, so the sheet never drifts a day across time zones. */
+const xd = d => d
+  ? {v: Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000) + 25569), k:"n", s:XL.DATE}
+  : {v:"", k:"s", s:XL.DATE};
 
 function sheetXml(rows, cols, merges){
   let out = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -1280,20 +1355,24 @@ async function loadAll(showStatus){
 /* Demo data — random, for layout preview when the sheet is not yet public. */
 function demo(){
   const d = baseDistricts();
-  for(const x of d) for(const t of TITLES){
-    const r = Math.random();
-    x.rcv[t.key] = r < .08 ? 0 : Math.round(x.tgt[t.key] * Math.min(1.02, r + .15));
+  const randDate = () => new Date(2026, 2, 1 + Math.floor(Math.random()*160));
+  for(const x of d){
+    for(const t of TITLES){
+      const r = Math.random();
+      x.rcv[t.key] = r < .08 ? 0 : Math.round(x.tgt[t.key] * Math.min(1.02, r + .15));
+    }
+    if(Math.random() > .1){ x.date = randDate(); x.dateRaw = fmtDate(x.date); }
   }
   DATA.district = d; DATA.demo = true;
   DATA.block = new Map(); DATA.school = new Map();
   loadMaster().then(M => {
     for(const b of M.blocks){
       const k = norm(M.districts[b.d]) + "|" + norm(b.name);
-      DATA.block.set(k, {tgm:Math.random()>.25, tgh:Math.random()>.3, td:Math.random()>.45});
+      DATA.block.set(k, {tgm:Math.random()>.25, tgh:Math.random()>.3, td:Math.random()>.45, date:randDate(), dateRaw:""});
     }
     for(const s of M.schools){
       if(Math.random() > .55) continue;
-      DATA.school.set(s.udise, {tgm:Math.random()>.3, tgh:Math.random()>.35, td:Math.random()>.5});
+      DATA.school.set(s.udise, {tgm:Math.random()>.3, tgh:Math.random()>.35, td:Math.random()>.5, date:randDate(), dateRaw:""});
     }
     setSource("demo");
     renderAll();
@@ -1339,28 +1418,31 @@ function wire(){
   $("#refreshBtn").addEventListener("click", () => loadAll(true));
 
   $("#dExport").addEventListener("click", () => {
-    const head = ["District", ...TITLES.flatMap(t => [`${t.short} Target`, `${t.short} Received`, `${t.short} % Received`]), "Total Target", "Total Received", "Overall % Received"];
+    const head = ["District", ...TITLES.flatMap(t => [`${t.short} Target`, `${t.short} Received`, `${t.short} % Received`]), "Total Target", "Total Received", "Overall % Received", "Scan Date"];
     const body = districtRows().map(r => [r.name,
       ...TITLES.flatMap(t => [r.tgt[t.key], r.rcv[t.key], pctOf(r.rcv[t.key], r.tgt[t.key]).toFixed(1)]),
-      r.totT, r.totR, r.pct.toFixed(1)]);
+      r.totT, r.totR, r.pct.toFixed(1), fmtDate(r.date)]);
     download("tg-td-district.csv", toCSV([head, ...body]));
   });
   $("#bExport").addEventListener("click", async () => {
     if(!blockRows) await buildBlockRows();
     const dsel = $("#bDist").value;
     const rows = dsel ? blockRows.filter(r => r.dKey === dsel) : blockRows;
-    const head = ["District","Block","Block Code", ...TITLES.map(t => t.short), "Titles Reached"];
-    download("tg-td-block.csv", toCSV([head, ...rows.map(r => [r.district, r.name, r.code, ...r.st.map(x => x?"YES":"NO"), r.n])]));
+    const head = ["District","Block","Block Code", ...TITLES.map(t => t.short), "Titles Reached", "Scan Date"];
+    download("tg-td-block.csv", toCSV([head, ...rows.map(r => [r.district, r.name, r.code, ...r.st.map(x => x?"YES":"NO"), r.n, fmtDate(r.date)])]));
   });
   $("#sExport").addEventListener("click", async () => {
     const dsel = $("#sDist").value;
     if(!dsel){ alert("Choose a district first — the school export follows the district on screen."); return; }
     if(!schoolIndex) await buildSchoolIndex();
     const bsel = $("#sBlock").value;
-    let rows = (schoolIndex.get(dsel) || []).map(s => { const st = schoolStatus(s.udise); return {...s, st, n:st.filter(Boolean).length}; });
+    let rows = (schoolIndex.get(dsel) || []).map(s => {
+      const rec = schoolRec(s.udise), st = recStatus(rec);
+      return {...s, st, n:st.filter(Boolean).length, date:rec&&rec.date};
+    });
     if(bsel) rows = rows.filter(r => r.bKey === bsel);
-    const head = ["District","Block","UDISE Code","School Name", ...TITLES.map(t => t.short), "Titles Reached"];
-    download("tg-td-school.csv", toCSV([head, ...rows.map(r => [r.district, r.block, r.udise, r.name, ...r.st.map(x => x?"YES":"NO"), r.n])]));
+    const head = ["District","Block","UDISE Code","School Name", ...TITLES.map(t => t.short), "Titles Reached", "Scan Date"];
+    download("tg-td-school.csv", toCSV([head, ...rows.map(r => [r.district, r.block, r.udise, r.name, ...r.st.map(x => x?"YES":"NO"), r.n, fmtDate(r.date)])]));
   });
 }
 

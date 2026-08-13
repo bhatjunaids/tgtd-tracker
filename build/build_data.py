@@ -145,6 +145,7 @@ def main():
     for t in TITLE_COLS:
         dt[f"{t} Received"] = 0
     dt = dt[["District"] + [c for t in TITLE_COLS for c in (f"{t} Target", f"{t} Received")]]
+    dt["Scan Date"] = ""
     dt.to_csv(TEMPLATES / "1_district.csv", index=False)
 
     bt = pd.DataFrame(
@@ -153,6 +154,7 @@ def main():
     )
     for t in TITLE_COLS:
         bt[t] = 0
+    bt["Scan Date"] = ""
     bt.to_csv(TEMPLATES / "2_block.csv", index=False)
 
     st = pd.DataFrame(
@@ -161,6 +163,7 @@ def main():
     )
     for t in TITLE_COLS:
         st[t] = 0
+    st["Scan Date"] = ""
     st.to_csv(TEMPLATES / "3_school.csv", index=False)
 
     print(f"districts {len(districts)}  blocks {len(blocks)}  schools {len(schools):,}")
