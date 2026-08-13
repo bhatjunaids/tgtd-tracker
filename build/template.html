@@ -131,21 +131,47 @@
   .sect h3{font-family:var(--serif);font-size:19px;font-weight:600;margin:0 0 4px}
   .sect p.note{margin:0 0 14px;color:var(--ink-soft);font-size:12.5px;max-width:70ch}
 
-  .dist{display:flex;gap:2px;border-radius:8px;overflow:hidden;height:34px;border:1px solid var(--line)}
-  .dist .seg{display:grid;place-items:center;font-family:var(--mono);font-size:11.5px;font-weight:600;color:#fff;min-width:2px}
-  .distleg{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}
-  .distleg .li{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-soft)}
-  .distleg .li .d{width:10px;height:10px;border-radius:3px}
-  .distleg .li b{font-family:var(--mono);color:var(--ink)}
 
-  .rank{display:grid;grid-template-columns:1fr 1fr;gap:26px}
-  @media(max-width:840px){.rank{grid-template-columns:1fr}}
-  .rank h4{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;margin:0 0 10px}
-  .rrow{display:grid;grid-template-columns:132px 1fr 52px;align-items:center;gap:10px;margin-bottom:7px}
-  .rrow .rn{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .rrow .rb{height:14px;background:#EFEEE9;border-radius:0 4px 4px 0;overflow:hidden}
-  .rrow .rb i{display:block;height:100%;border-radius:0 4px 4px 0;background:var(--t0)}
-  .rrow .rv{font-family:var(--mono);font-size:12px;font-weight:600;text-align:right}
+  /* ---------- Analysis blocks (matched to the Balvatika dashboard) ---------- */
+  .bvhero{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 24px;box-shadow:var(--shadow);margin-bottom:16px}
+  .hero-top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:14px}
+  .hero-lead{font-family:var(--serif);font-size:15px;color:var(--ink-soft);font-weight:500;margin:0}
+  .hero-big{font-family:var(--mono);font-size:46px;font-weight:600;line-height:.95;color:var(--ink);letter-spacing:-.02em}
+  .hero-big small{font-size:24px;color:var(--ink-soft);font-weight:500;margin-left:4px}
+  .hero-counts{font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);text-align:right}
+  .hero-counts b{color:var(--ink)}
+  .shelf{margin-top:18px;height:26px;border-radius:7px;background:#EDEBE4;overflow:hidden;position:relative;display:flex;border:1px solid var(--line)}
+  .shelf-fill{height:100%;background:linear-gradient(90deg,var(--spine),var(--spine-deep));transition:width .9s cubic-bezier(.22,1,.36,1)}
+  .shelf-grid{position:absolute;inset:0;pointer-events:none;display:flex}
+  .shelf-grid span{flex:1;border-right:1px solid rgba(255,255,255,.45)}
+  .shelf-grid span:last-child{border:none}
+
+  .statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+  .stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow)}
+  .stat .lbl{font-size:12px;color:var(--ink-soft);display:flex;align-items:center;gap:7px}
+  .stat .dot{width:9px;height:9px;border-radius:50%}
+  .stat .num{font-family:var(--mono);font-size:30px;font-weight:600;margin-top:8px;line-height:1}
+  .stat .meta{font-size:11.5px;color:var(--ink-faint);margin-top:4px}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px 22px;box-shadow:var(--shadow)}
+  .card h3{font-family:var(--serif);font-size:18px;font-weight:600;margin:0 0 3px}
+  .card p.sub{margin:0 0 15px;color:var(--ink-soft);font-size:12.5px}
+  .hbars{display:flex;flex-direction:column;gap:9px}
+  .hbar{display:grid;grid-template-columns:118px 1fr 60px;align-items:center;gap:12px;font-size:12px}
+  .hbar .nm{font-weight:600;text-align:right;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hbar .track{height:14px;background:#EDEBE4;border-radius:7px;overflow:hidden}
+  .hbar .track > i{display:block;height:100%;border-radius:7px;transition:width .8s cubic-bezier(.22,1,.36,1)}
+  .hbar .pc{font-family:var(--mono);font-weight:600;text-align:right}
+  .donutwrap{display:flex;gap:22px;align-items:center;flex-wrap:wrap}
+  .donutwrap svg{flex:0 0 auto}
+  .legend{display:flex;flex-direction:column;gap:8px;font-size:12.5px}
+  .legend .li{display:flex;align-items:center;gap:8px;color:var(--ink-soft)}
+  .legend .li .d{width:10px;height:10px;border-radius:3px;flex:0 0 auto}
+  .legend .li b{font-family:var(--mono);color:var(--ink)}
+  .distscroll{max-height:420px;overflow-y:auto;padding-right:6px}
+  .distscroll .hbar{grid-template-columns:148px 1fr 48px}
+  .distscroll .hbar .nm{font-family:var(--sans);font-weight:500}
 
   /* ---------- State report ---------- */
   .modnote{color:var(--ink-soft);font-size:12.5px;max-width:96ch;margin:18px 0 0;line-height:1.55}
@@ -205,6 +231,13 @@
     .search input,select.sel{min-width:0;width:100%}
     .search{flex:1 1 100%}
     .match-report{padding:0 14px 12px}
+    .statgrid{grid-template-columns:repeat(2,1fr)}
+    .grid2{grid-template-columns:1fr}
+    .hero-big{font-size:36px}
+    .hero-counts{text-align:left}
+    .card{padding:16px 15px}
+    .hbar{grid-template-columns:96px 1fr 52px;gap:9px}
+    .distscroll .hbar{grid-template-columns:112px 1fr 44px}
   }
 </style>
 </head>
@@ -275,21 +308,27 @@
 
     <section class="panel" id="panel-analysis" role="tabpanel">
       <div class="hero" id="dHero"></div>
-      <div class="sect">
-        <h3>How districts are spread</h3>
-        <p class="note">Districts grouped by overall receipt against target, counting all three titles together.</p>
-        <div class="dist" id="dDist"></div>
-        <div class="distleg" id="dDistLeg"></div>
+      <div class="bvhero" id="dBig"></div>
+      <div class="statgrid" id="dStats"></div>
+      <div class="grid2">
+        <div class="card">
+          <h3>Fill rate by title</h3>
+          <p class="sub">State-wide received as a share of target, per title.</p>
+          <div class="hbars" id="dTitleBars"></div>
+        </div>
+        <div class="card">
+          <h3>District status</h3>
+          <p class="sub">How the 75 districts split across delivery stages.</p>
+          <div class="donutwrap">
+            <div id="dDonut"></div>
+            <div class="legend" id="dDonutLeg"></div>
+          </div>
+        </div>
       </div>
-      <div class="sect rank">
-        <div>
-          <h4>Strongest districts — overall % received</h4>
-          <div id="dTop"></div>
-        </div>
-        <div>
-          <h4>Weakest districts — overall % received</h4>
-          <div id="dBot"></div>
-        </div>
+      <div class="card">
+        <h3>Completion by district</h3>
+        <p class="sub">Sorted lowest first — the districts needing follow-up sit at the top.</p>
+        <div class="distscroll"><div class="hbars" id="dDistBars"></div></div>
       </div>
     </section>
 
@@ -742,21 +781,82 @@ function renderAnalysis(){
   }).join("");
   $("#dHero").innerHTML = tiles;
 
+  /* ---- hero: overall fill against the whole state target ---- */
+  const gT = rows.reduce((s,r) => s + r.totT, 0);
+  const gR = rows.reduce((s,r) => s + r.totR, 0);
+  const overall = pctOf(gR, gT);
+  const above80 = rows.filter(r => r.pct > 80).length;
+  $("#dBig").innerHTML = `
+    <div class="hero-top">
+      <div>
+        <p class="hero-lead">Of ${fmt(gT)} books targeted across the state</p>
+        <div class="hero-big">${overall.toFixed(1)}<small>% received</small></div>
+      </div>
+      <div class="hero-counts">
+        <div><b>${fmt(gR)}</b> books confirmed received</div>
+        <div><b>${above80}</b> of 75 districts above 80%</div>
+        <div><b>${fmt(Math.max(0, gT - gR))}</b> books still pending</div>
+      </div>
+    </div>
+    <div class="shelf">
+      <div class="shelf-fill" style="width:${Math.min(100, overall)}%"></div>
+      <div class="shelf-grid">${Array(10).fill("<span></span>").join("")}</div>
+    </div>`;
+
+  /* ---- how the 75 districts split across the bands ---- */
   const counts = BAND.map(b => ({...b, n: rows.filter(r => bandOf(r.pct).key === b.key).length}));
-  const tot = rows.length || 1;
-  $("#dDist").innerHTML = counts.filter(c=>c.n>0).map(c =>
-    `<span class="seg" style="flex:${c.n};background:${c.color}" title="${c.label}: ${c.n} districts">${c.n/tot > .06 ? c.n : ""}</span>`).join("");
-  $("#dDistLeg").innerHTML = counts.map(c =>
+  const meta = {high:"on track / complete", mid:"partially delivered", low:"received, but well short", none:"nothing received yet"};
+  $("#dStats").innerHTML = counts.map(c => `
+    <div class="stat">
+      <div class="lbl"><span class="dot" style="background:${c.color}"></span>${c.label}</div>
+      <div class="num">${c.n}</div>
+      <div class="meta">${meta[c.key]}</div>
+    </div>`).join("");
+
+  /* ---- fill rate per title ---- */
+  $("#dTitleBars").innerHTML = TITLES.map(t => {
+    const T = rows.reduce((s,d) => s + d.tgt[t.key], 0);
+    const R = rows.reduce((s,d) => s + d.rcv[t.key], 0);
+    const p = pctOf(R, T);
+    return `<div class="hbar" title="${esc(t.label)}: ${fmt(R)} of ${fmt(T)}">
+      <span class="nm">${esc(t.short)}</span>
+      <span class="track"><i style="width:${Math.min(100,p)}%;background:${t.hex}"></i></span>
+      <span class="pc">${p>0&&p<1?"<1":p.toFixed(1)}%</span>
+    </div>`;
+  }).join("");
+
+  /* ---- donut of the same band split ---- */
+  const total = rows.length || 1;
+  const R_OUT = 54, R_IN = 34, CX = 60, CY = 60;
+  let a0 = -Math.PI/2, arcs = "";
+  for(const c of counts){
+    if(!c.n) continue;
+    const a1 = a0 + (c.n/total) * Math.PI * 2;
+    // a full-circle slice can't be drawn as one arc — draw it as a ring instead
+    if(c.n === total){
+      arcs += `<circle cx="${CX}" cy="${CY}" r="${(R_OUT+R_IN)/2}" fill="none" stroke="${c.color}" stroke-width="${R_OUT-R_IN}"/>`;
+      break;
+    }
+    const pt = (r,a) => `${(CX + r*Math.cos(a)).toFixed(2)},${(CY + r*Math.sin(a)).toFixed(2)}`;
+    const big = (a1 - a0) > Math.PI ? 1 : 0;
+    arcs += `<path d="M${pt(R_OUT,a0)} A${R_OUT},${R_OUT} 0 ${big} 1 ${pt(R_OUT,a1)} L${pt(R_IN,a1)} A${R_IN},${R_IN} 0 ${big} 0 ${pt(R_IN,a0)} Z" fill="${c.color}"/>`;
+    a0 = a1;
+  }
+  $("#dDonut").innerHTML = `<svg width="120" height="120" viewBox="0 0 120 120" role="img" aria-label="District status split">
+    ${arcs}
+    <text x="60" y="58" text-anchor="middle" font-family="var(--mono)" font-size="21" font-weight="600" fill="var(--ink)">${rows.length}</text>
+    <text x="60" y="73" text-anchor="middle" font-family="var(--sans)" font-size="9.5" fill="var(--ink-faint)">districts</text>
+  </svg>`;
+  $("#dDonutLeg").innerHTML = counts.map(c =>
     `<span class="li"><span class="d" style="background:${c.color}"></span>${c.label} — <b>${c.n}</b></span>`).join("");
 
-  const sorted = [...rows].sort((a,b) => b.pct - a.pct);
-  const bar = list => list.map(r => `<div class="rrow">
-      <span class="rn">${esc(r.name)}</span>
-      <span class="rb"><i style="width:${Math.max(1,Math.min(100,r.pct))}%"></i></span>
-      <span class="rv">${r.pct>0&&r.pct<1?"<1":Math.round(r.pct)}%</span>
+  /* ---- every district, worst first ---- */
+  $("#dDistBars").innerHTML = [...rows].sort((a,b) => a.pct - b.pct).map(r => `
+    <div class="hbar" title="${esc(r.name)}: ${fmt(r.totR)} of ${fmt(r.totT)}">
+      <span class="nm">${esc(r.name)}</span>
+      <span class="track"><i style="width:${Math.min(100,r.pct)}%;background:${bandOf(r.pct).color}"></i></span>
+      <span class="pc">${r.pct>0&&r.pct<1?"<1":Math.round(r.pct)}%</span>
     </div>`).join("");
-  $("#dTop").innerHTML = bar(sorted.slice(0,10));
-  $("#dBot").innerHTML = bar(sorted.slice(-10).reverse());
 }
 
 function renderGaps(){
