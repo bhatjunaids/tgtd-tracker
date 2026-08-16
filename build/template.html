@@ -274,6 +274,7 @@
     <button class="modbtn" data-mod="block" role="tab">Block <span class="mn">1,016</span></button>
     <button class="modbtn" data-mod="school" role="tab">School <span class="mn">1,31,383</span></button>
     <button class="modbtn" data-mod="reports" role="tab">Reports</button>
+    <button class="modbtn" data-mod="ask" role="tab">Ask <span class="mn">beta</span></button>
   </nav>
 
   <!-- ============ DISTRICT ============ -->
@@ -430,6 +431,11 @@
       <p class="cap">Cell colour follows share of target: green above 80%, amber 50–80%, red below 50%.
       The workbook carries the same bands, so it reads the same on paper.</p>
     </section>
+  </div>
+
+  <!-- ============ ASK ============ -->
+  <div id="mod-ask" class="module">
+    <div id="askql"></div>
   </div>
 
   <div class="foot">
@@ -1399,6 +1405,83 @@ function download(name, text){
 const csvCell = v => `"${String(v==null?"":v).replace(/"/g,'""')}"`;
 const toCSV = rows => rows.map(r => r.map(csvCell).join(",")).join("\n");
 
+__ASKQL__
+
+/* ============ Ask — adapter ============
+   Normalises this tracker's three levels into the one row shape the query engine
+   executes over. Nothing here decides an answer; it only says where the rows are.
+
+   Block and school sheets record arrival, not quantity, so each title counts as
+   one unit: "% of target" at those levels is the share of selected titles that
+   arrived. District rows carry the real work-order counts. */
+let askBlockRows = null, askSchoolRows = null;
+
+async function askBuildBlocks(){
+  if(askBlockRows) return askBlockRows;
+  const M = await loadMaster();
+  askBlockRows = M.blocks.map(b => {
+    const dName = M.districts[b.d];
+    const rec = blockRec(norm(dName), norm(b.name), b.code);
+    const tgt = {}, rcv = {};
+    for(const t of TITLES){ tgt[t.key] = 1; rcv[t.key] = (rec && rec[t.key]) ? 1 : 0; }
+    return {district:dName, block:b.name, code:b.code||"", school:"", udise:"",
+            tgt, rcv, date:rec ? rec.date : null};
+  });
+  return askBlockRows;
+}
+async function askBuildSchools(){
+  if(askSchoolRows) return askSchoolRows;
+  const M = await loadMaster();
+  askSchoolRows = M.schools.map(s => {
+    const b = M.blocks[s.b], dName = M.districts[b.d];
+    const rec = schoolRec(s.udise);
+    const tgt = {}, rcv = {};
+    for(const t of TITLES){ tgt[t.key] = 1; rcv[t.key] = (rec && rec[t.key]) ? 1 : 0; }
+    return {district:dName, block:b.name, code:b.code||"", school:s.name, udise:s.udise,
+            tgt, rcv, date:rec ? rec.date : null};
+  });
+  return askSchoolRows;
+}
+
+const ASK_ADAPTER = {
+  trackerLabel: "TG & TD Distribution Tracker — Teacher Guide (Math and Hindi) and Teacher Diary, Kitab Vitran, Uttar Pradesh",
+  titles: TITLES.map(t => ({key:t.key, label:t.label, short:t.short})),
+  districts: () => DIST_NAMES,
+  /* District rows carry work-order copy counts; block and school sheets record
+     arrival only, so those levels stand each title in for one unit. */
+  counting: lvl => lvl === "district" ? "units" : "titles",
+  levels: {
+    district:{label:"Districts", noun:"districts", one:"district"},
+    block:   {label:"Blocks",    noun:"blocks",    one:"block"},
+    school:  {label:"Schools",   noun:"schools",   one:"school"}
+  },
+  notes: [
+    "District rows carry work-order counts, so pct there is a real fill rate against a target number of copies.",
+    "Block and school rows record arrival only, so each title counts as one: pct there is the share of selected titles received.",
+    "There are 1,016 blocks and 1,31,383 schools; their names are not listed here. Use blockSearch or schoolSearch only when the question names one."
+  ],
+  examples: [
+    "districts below 50%",
+    "which blocks in Sitapur have not received the Teacher Diary?",
+    "how many schools in Hardoi have received nothing?",
+    "20 worst districts for TG Hindi",
+    "blocks with all three titles",
+    "schools in Lucknow with no scan date"
+  ],
+  freshness: () => lastUpdated
+    ? `the backend sheet, read at ${fmtTime(lastUpdated)}`
+    : "the embedded master list — the backend sheet has not been read yet",
+  ready: async () => { await loadMaster(); return true; },
+  rows: async level => {
+    if(level === "block")  return askBuildBlocks();
+    if(level === "school") return askBuildSchools();
+    return districtRows().map(r => ({
+      district:r.name, block:"", code:"", school:"", udise:"",
+      tgt:r.tgt, rcv:r.rcv, date:r.date
+    }));
+  }
+};
+
 /* ============ Wiring ============ */
 function initSelects(){
   const opts = DIST_NAMES.map((n,i) => `<option value="${DIST_KEY[i]}">${esc(n)}</option>`).join("");
@@ -1409,7 +1492,7 @@ function initSelects(){
 function renderAll(){
   renderDistrict(); renderAnalysis(); renderGaps();
   // block and report roll-ups are derived from the sheet, so drop them on reload
-  blockRows = null; reportRows = null;
+  blockRows = null; reportRows = null; askBlockRows = null; askSchoolRows = null;
   if($("#mod-block").classList.contains("active")) renderBlock();
   if($("#mod-school").classList.contains("active")) renderSchool();
   if($("#mod-reports").classList.contains("active")) renderReports();
@@ -1550,6 +1633,7 @@ function wire(){
   $("#footNote").textContent = `Master built ${INTEGRITY.builtOn}`;
   initSelects();
   wire();
+  AskQL.init(ASK_ADAPTER);
   renderAll();
   // ?demo=1 fills the page with random numbers — for previewing the layout
   // before the backend sheet is shared. Not linked from the UI.

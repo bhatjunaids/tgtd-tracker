@@ -115,6 +115,57 @@ The page re-reads the sheet every 5 minutes, and **Refresh** forces it.
 The District, Block and School screens keep a plain **Export CSV** for the raw filtered rows.
 The Excel workbook below is the one to send to people.
 
+## The Ask screen
+
+A fifth screen takes a question in plain English and turns it into a **filter** — a level, a
+set of titles, some conditions, a sort and a limit — then runs that filter over the same live
+rows the other screens show.
+
+**The division of labour is the point.** A language model may decide *what to look at*. It
+never decides what the number is. The only thing a translator is allowed to return is a
+`FilterSpec` — a small JSON object validated against a strict schema. Every count, total and
+percentage on the screen is computed afterwards, in `build/askql.js`, by code the model never
+touches. The filter that ran is always displayed, as chips and as raw JSON, so any answer can
+be checked against the District, Block and School tables by hand.
+
+That makes the failure mode benign: a misread question returns the *wrong rows*, visibly
+described, rather than a confident wrong figure.
+
+### Two translators, one filter
+
+- **Built-in parser** — always present, no key, no network. Handles the common shapes:
+  thresholds ("districts below 50%"), scope ("blocks in Sitapur"), per-title negation
+  ("have not received the Teacher Diary"), counts ("how many schools…"), ranking ("20 worst
+  districts"), status ("blocks with all three titles"), and scan dates. When it cannot pin a
+  question down it says so and falls back to a broad filter rather than guessing.
+- **Claude** — optional. Handles free-form phrasing. Uses structured outputs against the same
+  schema, so it cannot return anything the parser could not have returned.
+
+Swapping one translator for the other cannot change a number — only which rows get counted.
+
+### Connecting Claude (optional)
+
+The page is static, so there is no server to hold a key and no key is embedded. **Connect
+Claude** stores a key the reader supplies in that browser's `localStorage` and calls
+`api.anthropic.com` directly from the page. The key never enters this repository, the built
+HTML, or the backend sheet.
+
+Anyone with access to that browser profile can read the key, so this is for a personal
+machine, not a shared or public one. Questions are a few hundred tokens, so the cost per
+question is a fraction of a paisa.
+
+### Semantics worth knowing
+
+- Naming titles narrows *every* measure — status, percentage and totals are then computed over
+  those titles only.
+- `complete` means every selected title has been received; `none` means no selected title has.
+- District rows carry work-order copy counts, so **% of target** there is a real fill rate.
+  Block and school sheets record arrival rather than quantity, so each title counts as one and
+  **% of target** at those levels is the share of selected titles received. The table shows
+  Target and Received columns only where they are real counts.
+- Counts are reported against the places the question actually asked about: "schools in Hardoi
+  with nothing" is *n* of Hardoi's schools, not of all 1,31,383.
+
 ## The Excel export
 
 **Reports → Export Excel** produces a real `.xlsx` (not a CSV renamed) with four sheets:
@@ -149,7 +200,7 @@ python3 build/build_data.py && python3 build/assemble.py
 
 `build_data.py` reads the source xlsx and writes the embedded payload, the district targets,
 an integrity report, and the three sheet templates. `assemble.py` injects them into
-`build/template.html` and writes `docs/index.html`. **Edit `build/template.html`, never
+`build/template.html` and writes `docs/index.html`, along with `build/askql.js`, the Ask screen's query engine. **Edit `build/template.html`, never
 `docs/index.html`** — the latter is generated.
 
 `build/validate_palette.py` re-runs the colour-accessibility checks on the three title colours

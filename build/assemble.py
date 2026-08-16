@@ -11,6 +11,7 @@ html = (BUILD / "template.html").read_text()
 for marker, path in (
     ("__TARGETS__", "targets.js"),
     ("__INTEGRITY__", "integrity.json"),
+    ("__ASKQL__", "askql.js"),
     ("__PAYLOAD__", "payload.b64"),
 ):
     text = (BUILD / path).read_text().strip()
